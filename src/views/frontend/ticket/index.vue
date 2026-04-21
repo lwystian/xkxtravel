@@ -221,6 +221,10 @@ const total = ref(0)
 const ticketList = ref([])
 const loading = ref(false)
 
+// 景点搜索相关
+const scenicOptions = ref([])
+const scenicLoading = ref(false)
+
 // 搜索表单
 const searchForm = reactive({
   ticketName: '',
@@ -345,12 +349,13 @@ watch(() => route.query.search, (newSearch, oldSearch) => {
 
   // 页面头部
   .page-header {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 40px 20px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 40px;
-    padding: 40px 0 20px;
-    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0;
   }
 
   .header-content {

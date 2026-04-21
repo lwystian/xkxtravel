@@ -13,8 +13,38 @@
           <!-- 右侧：用户链接 -->
           <div class="top-links">
             <template v-if="isLoggedIn">
-              <span class="welcome-text">您好，{{ userName || '用户' }}</span>
-              <el-divider direction="vertical" />
+              <el-dropdown trigger="click" @command="handleCommand">
+                <span class="welcome-text user-dropdown">
+                  <el-icon><User /></el-icon>
+                  您好，{{ userName || '用户' }}
+                  <el-icon class="arrow-icon"><ArrowDown /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="profile">
+                      <el-icon><User /></el-icon>
+                      个人中心
+                    </el-dropdown-item>
+                    <el-dropdown-item command="orders">
+                      <el-icon><Tickets /></el-icon>
+                      我的订单
+                    </el-dropdown-item>
+                    <el-dropdown-item command="collection">
+                      <el-icon><Star /></el-icon>
+                      我的收藏
+                    </el-dropdown-item>
+                    <el-dropdown-item command="guide">
+                      <el-icon><Reading /></el-icon>
+                      我的攻略
+                    </el-dropdown-item>
+                    <el-dropdown-divider />
+                    <el-dropdown-item command="logout" divided>
+                      <el-icon><SwitchButton /></el-icon>
+                      退出登录
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
             <template v-else>
               <router-link to="/login" class="top-link">会员登录</router-link>
@@ -22,8 +52,6 @@
               <router-link to="/register" class="top-link">会员注册</router-link>
               <el-divider direction="vertical" />
             </template>
-            <router-link to="/orders" class="top-link">我的订单</router-link>
-            <el-divider direction="vertical" />
             <span class="top-link favorite-link" @click="handleAddFavorite">
               <el-icon><Star /></el-icon>
               加入收藏
@@ -125,6 +153,39 @@
                 class="suggestions-dropdown"
                 @mousedown.prevent
               >
+                <!-- 线路推荐（综合模式或线路模式显示） -->
+                <div v-if="searchSuggestions.lines.length > 0 && (currentCategory.value === 'all' || currentCategory.value === 'line')" class="suggestion-section">
+                  <div class="section-title">
+                    <el-icon><Tickets /></el-icon>
+                    <span>线路推荐</span>
+                  </div>
+                  <div
+                    v-for="(item, index) in searchSuggestions.lines"
+                    :key="`line-${item.id}`"
+                    class="suggestion-item"
+                    :class="{ active: selectedSuggestionIndex === getLineIndex(index) }"
+                    @click="goToTicketDetail(item.id)"
+                    @mouseenter="selectedSuggestionIndex = getLineIndex(index)"
+                  >
+                    <div class="item-image">
+                      <img
+                        :src="getImageUrl(item.ticketImage)"
+                        :alt="item.ticketName"
+                        @error="$event.target.src = 'https://via.placeholder.com/48x48?text=No+Image'"
+                      />
+                    </div>
+                    <div class="item-content">
+                      <div class="item-title">{{ item.ticketName }}</div>
+                      <div class="item-subtitle">
+                        <el-icon><Ticket /></el-icon>
+                        {{ item.description || '精彩线路' }}
+                        <span v-if="item.discountPrice && item.discountPrice > 0" class="price">¥{{ item.discountPrice }}</span>
+                        <span v-else-if="item.price && item.price > 0" class="price">¥{{ item.price }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- 景点推荐（综合模式或景点模式显示） -->
                 <div v-if="searchSuggestions.scenics.length > 0 && (currentCategory.value === 'all' || currentCategory.value === 'scenic')" class="suggestion-section">
                   <div class="section-title">
@@ -189,38 +250,6 @@
                     </div>
                   </div>
                 </div>
-
-                <!-- 线路推荐（综合模式或线路模式显示） -->
-                <div v-if="searchSuggestions.lines.length > 0 && (currentCategory.value === 'all' || currentCategory.value === 'line')" class="suggestion-section">
-                  <div class="section-title">
-                    <el-icon><Tickets /></el-icon>
-                    <span>线路推荐</span>
-                  </div>
-                  <div
-                    v-for="(item, index) in searchSuggestions.lines"
-                    :key="`line-${item.id}`"
-                    class="suggestion-item"
-                    :class="{ active: selectedSuggestionIndex === getLineIndex(index) }"
-                    @click="goToLineDetail(item.id)"
-                    @mouseenter="selectedSuggestionIndex = getLineIndex(index)"
-                  >
-                    <div class="item-image">
-                      <img
-                        :src="getImageUrl(item.imageUrl)"
-                        :alt="item.name"
-                        @error="$event.target.src = 'https://via.placeholder.com/48x48?text=No+Image'"
-                      />
-                    </div>
-                    <div class="item-content">
-                      <div class="item-title">{{ item.name }}</div>
-                      <div class="item-subtitle">
-                        <el-icon><Ticket /></el-icon>
-                        {{ item.description || '精彩线路' }}
-                        <span v-if="item.price && item.price > 0" class="price">¥{{ item.price }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -235,6 +264,7 @@
             :ellipsis="false"
             class="main-menu"
             :router="true"
+            :default-active="activeMenuIndex"
           >
             <el-menu-item index="/">
               <el-icon><HomeFilled /></el-icon>
@@ -282,7 +312,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import {
@@ -308,6 +338,7 @@ import {
 
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
 const baseAPI = process.env.VUE_APP_BASE_API || '/api'
 
 // 位置相关
@@ -364,6 +395,17 @@ let searchDebounceTimer = null
 const isLoggedIn = computed(() => !!userStore.token)
 const userName = computed(() => userStore.userInfo?.name || userStore.userInfo?.username || '')
 
+// 计算当前激活的菜单索引
+const activeMenuIndex = computed(() => {
+  const path = route.path
+  if (path === '/') return '/'
+  if (path.startsWith('/scenic')) return '/scenic'
+  if (path.startsWith('/guide')) return '/guide'
+  if (path.startsWith('/accommodation')) return '/accommodation'
+  if (path.startsWith('/tickets') || path.startsWith('/ticket/booking')) return '/tickets'
+  return '/'
+})
+
 // 获取图片完整URL
 const getImageUrl = (url) => {
   if (!url) return 'https://via.placeholder.com/48x48?text=No+Image'
@@ -373,7 +415,7 @@ const getImageUrl = (url) => {
 // 获取占位符文本
 const getPlaceholder = () => {
   switch (currentCategory.value.value) {
-    case 'all': return '搜索综合内容...'
+    case 'all': return '搜索旅行线路、景点、攻略...'
     case 'line': return '搜索线路...'
     case 'scenic': return '搜索景点...'
     case 'guide': return '搜索攻略...'
@@ -432,7 +474,7 @@ const fetchSearchSuggestions = async (keyword) => {
 
     if (category === 'all') {
       // 综合搜索：同时获取景点、攻略和线路建议
-      const [scenicResponse, guideResponse, lineResponse] = await Promise.all([
+      const [scenicResponse, guideResponse] = await Promise.all([
         request.get('/scenic/suggestions', {
           keyword,
           limit: 3
@@ -445,19 +487,23 @@ const fetchSearchSuggestions = async (keyword) => {
           limit: 3
         }, {
           showDefaultMsg: false
-        }).catch(() => []),
-
-        request.get('/line/suggestions', {
-          keyword,
-          limit: 3
-        }, {
-          showDefaultMsg: false
         }).catch(() => [])
       ])
 
       searchSuggestions.scenics = Array.isArray(scenicResponse) ? scenicResponse : (scenicResponse?.data || [])
       searchSuggestions.guides = Array.isArray(guideResponse) ? guideResponse : (guideResponse?.data || [])
-      searchSuggestions.lines = Array.isArray(lineResponse) ? lineResponse : (lineResponse?.data || [])
+
+      // 单独获取线路建议（使用门票接口）
+      await request.get('/ticket/page', {
+        ticketName: keyword,
+        currentPage: 1,
+        size: 3
+      }, {
+        showDefaultMsg: false,
+        onSuccess: (res) => {
+          searchSuggestions.lines = res.records || []
+        }
+      })
     } else if (category === 'scenic') {
       // 只获取景点建议
       const response = await request.get('/scenic/suggestions', {
@@ -479,15 +525,17 @@ const fetchSearchSuggestions = async (keyword) => {
 
       searchSuggestions.guides = Array.isArray(response) ? response : (response?.data || [])
     } else if (category === 'line') {
-      // 只获取线路建议
-      const response = await request.get('/line/suggestions', {
-        keyword,
-        limit: 5
+      // 只获取线路建议（使用门票接口）
+      await request.get('/ticket/page', {
+        ticketName: keyword,
+        currentPage: 1,
+        size: 5
       }, {
-        showDefaultMsg: false
-      }).catch(() => [])
-
-      searchSuggestions.lines = Array.isArray(response) ? response : (response?.data || [])
+        showDefaultMsg: false,
+        onSuccess: (res) => {
+          searchSuggestions.lines = res.records || []
+        }
+      })
     }
 
     showSearchSuggestions.value = (searchSuggestions.scenics.length > 0 || searchSuggestions.guides.length > 0 || searchSuggestions.lines.length > 0)
@@ -549,40 +597,37 @@ const hideSearchSuggestions = () => {
   selectedSuggestionIndex.value = -1
 }
 
-// 获取攻略建议的索引
+// 获取攻略建议的索引（线路在最上，然后景点，然后攻略）
 const getGuideIndex = (index) => {
   if (currentCategory.value === 'all') {
-    return searchSuggestions.scenics.length + index
+    return searchSuggestions.lines.length + searchSuggestions.scenics.length + index
   }
   return index
 }
 
-// 获取线路建议的索引
+// 获取线路建议的索引（线路在最上面）
 const getLineIndex = (index) => {
-  if (currentCategory.value === 'all') {
-    return searchSuggestions.scenics.length + searchSuggestions.guides.length + index
-  }
   return index
 }
 
 // 选择建议项
 const selectSuggestion = (index) => {
+  const lineCount = searchSuggestions.lines.length
   const scenicCount = searchSuggestions.scenics.length
   const guideCount = searchSuggestions.guides.length
-  const lineCount = searchSuggestions.lines.length
 
-  if (index < scenicCount) {
-    // 景点
-    const scenic = searchSuggestions.scenics[index]
-    goToScenicDetail(scenic.id)
-  } else if (index < scenicCount + guideCount) {
-    // 攻略
-    const guide = searchSuggestions.guides[index - scenicCount]
-    goToGuideDetail(guide.id)
-  } else {
+  if (index < lineCount) {
     // 线路
-    const line = searchSuggestions.lines[index - scenicCount - guideCount]
-    goToLineDetail(line.id)
+    const line = searchSuggestions.lines[index]
+    goToTicketDetail(line.id)
+  } else if (index < lineCount + scenicCount) {
+    // 景点
+    const scenic = searchSuggestions.scenics[index - lineCount]
+    goToScenicDetail(scenic.id)
+  } else {
+    // 攻略
+    const guide = searchSuggestions.guides[index - lineCount - scenicCount]
+    goToGuideDetail(guide.id)
   }
 }
 
@@ -598,10 +643,15 @@ const goToGuideDetail = (id) => {
   hideSearchSuggestions()
 }
 
-// 跳转到线路详情
-const goToLineDetail = (id) => {
-  router.push(`/tickets/${id}`)
+// 跳转到门票详情
+const goToTicketDetail = (id) => {
+  router.push(`/ticket/booking/${id}`)
   hideSearchSuggestions()
+}
+
+// 跳转到线路详情（兼容旧名称）
+const goToLineDetail = (id) => {
+  goToTicketDetail(id)
 }
 
 // 执行搜索提交
@@ -810,6 +860,27 @@ onMounted(() => {
     font-weight: 500;
   }
 
+  .user-dropdown {
+    color: #ffd700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: color 0.3s;
+
+    &:hover {
+      color: #e94560;
+    }
+
+    .el-icon {
+      margin-right: 4px;
+    }
+
+    .arrow-icon {
+      margin-left: 4px;
+      font-size: 12px;
+    }
+  }
+
   .el-divider {
     background-color: rgba(255, 255, 255, 0.2);
     margin: 0 10px;
@@ -987,6 +1058,19 @@ onMounted(() => {
     &.is-active {
       color: #e94560;
       font-weight: 600;
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 2px;
+        background-color: #e94560;
+        border-radius: 1px;
+      }
     }
 
     .el-icon {
@@ -1214,10 +1298,10 @@ onMounted(() => {
 // 主内容区域
 .main-content {
   flex: 1;
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 0;
+  margin: 0;
   width: 100%;
+  max-width: 100%;
 }
 
 // 页脚样式

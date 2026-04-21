@@ -1,6 +1,6 @@
 <template>
   <div class="home-carousel">
-    <el-carousel :interval="4000" height="450px" indicator-position="none" arrow="always" v-loading="loading">
+    <el-carousel :interval="4000" height="482px" indicator-position="outside" arrow="never" v-loading="loading">
       <el-carousel-item v-for="item in carouselList" :key="item.id">
         <div class="carousel-content">
           <img :src="getImageUrl(item.imageUrl)" :alt="item.title" class="carousel-image" />
@@ -21,13 +21,11 @@ const carouselList = ref([])
 const loading = ref(false)
 const baseAPI = process.env.VUE_APP_BASE_API || '/api'
 
-// 获取图片完整URL
 const getImageUrl = (url) => {
   if (!url) return ''
   return url.startsWith('http') ? url : baseAPI + url
 }
 
-// 获取轮播图数据
 const fetchCarousels = async () => {
   loading.value = true
   try {
@@ -49,38 +47,23 @@ onMounted(() => {
 })
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .home-carousel {
   width: 100%;
-  background: transparent !important;
-  overflow: hidden;
-
-  :deep(.el-carousel) {
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  :deep(.el-carousel__container) {
-    width: 100% !important;
-  }
-
-  :deep(.el-carousel__item) {
-    width: 100% !important;
-  }
+  height: 482px;
+  position: relative;
 }
 
 .carousel-content {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
 }
 
 .carousel-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s ease;
 }
 
 .carousel-overlay {
@@ -100,73 +83,54 @@ onMounted(() => {
   max-width: 800px;
   margin: 0 auto;
   text-align: center;
-  transform: translateY(0);
-  transition: transform 0.4s ease;
+}
+</style>
+
+<style>
+/* 全局样式 - 圆点指示器 */
+.home-carousel .el-carousel {
+  width: 100%;
+  height: 482px;
+  position: relative;
 }
 
-:deep(.el-carousel__arrow) {
-  background-color: rgba(0, 0, 0, 0.3);
-  font-size: 22px;
-  width: 50px;
-  height: 50px;
-  z-index: 2;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.5);
-  }
+.home-carousel .el-carousel__container {
+  height: 482px !important;
 }
 
-// 轮播项的动画效果
-:deep(.el-carousel__item) {
-  background: none !important;
-  background-color: transparent !important;
-  width: 100% !important;
-
-  &:hover .carousel-image {
-    transform: scale(1.05);
-  }
-
-  &:hover .carousel-title {
-    transform: translateY(-5px);
-  }
+.home-carousel .el-carousel__indicators--outside {
+  position: absolute !important;
+  bottom: 24px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 100 !important;
+  display: flex !important;
+  justify-content: center !important;
+  background: transparent !important;
 }
 
-:deep(.el-carousel) {
-  background: none !important;
-  background-color: transparent !important;
-  z-index: 1 !important;
-  width: 100% !important;
+.home-carousel .el-carousel__indicators--outside .el-carousel__indicator {
+  padding: 0 6px !important;
+  margin: 0 4px !important;
 }
 
-:deep(.el-carousel__container) {
-  background: none !important;
-  background-color: transparent !important;
-  width: 100% !important;
+.home-carousel .el-carousel__indicators--outside .el-carousel__button {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+  opacity: 1 !important;
+  display: block !important;
 }
 
-:deep(.el-carousel__mask) {
-  background: none !important;
-  background-color: transparent !important;
+.home-carousel .el-carousel__indicators--outside li.is-active .el-carousel__button {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: #fff !important;
+  transform: scale(1.4) !important;
 }
 
-:deep(.el-carousel__item) {
-  background-image: none !important;
+.home-carousel .el-carousel__indicators--outside li:hover .el-carousel__button {
+  background: rgba(255, 255, 255, 1) !important;
 }
-
-:deep(.loading-mask) {
-  background-color: rgba(255, 255, 255, 0.8) !important;
-}
-
-// 响应式样式
-@media (max-width: 768px) {
-  :deep(.el-carousel__arrow) {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-  }
-
-  .carousel-title {
-    font-size: 20px;
-  }
-}
-</style> 
+</style>

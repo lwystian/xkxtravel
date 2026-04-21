@@ -1,5 +1,7 @@
 <template>
   <div class="my-guide-container">
+    <!-- 页面头部容器 -->
+    <div class="page-header-wrapper">
     <!-- 现代化页面头部 -->
     <div class="page-header">
       <div class="header-content">
@@ -11,6 +13,7 @@
           管理您已发布的旅游攻略内容，分享您的旅行经验
         </p>
       </div>
+    </div>
     </div>
 
     <!-- 操作区域 -->
@@ -287,14 +290,21 @@ const deleteGuide = (row) => {
     padding: 40px 20px;
   }
 
+  // 页面头部容器
+  .page-header-wrapper {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 40px 20px 0;
+  }
+
   // 页面头部
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 40px;
-    padding: 40px 0 20px;
-    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0;
+    padding: 0;
+    border-bottom: none;
   }
 
   .header-content {

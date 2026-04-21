@@ -5,35 +5,6 @@
       <home-carousel />
     </div>
 
-    <!-- 快速导航区域 -->
-    <div class="quick-nav-section">
-      <div class="section-container">
-        <div class="section-header">
-          <h2 class="section-title">
-            <span class="title-icon">🎯</span>
-            快速导航
-          </h2>
-        </div>
-        <div class="category-grid">
-          <div v-for="(category, index) in categories" :key="category.id"
-               class="category-card animate-scale-in hover-lift"
-               :class="`category-card-${index + 1} delay-${(index + 1) * 100}`"
-               @click="goToCategory(category.id)">
-            <div class="category-bg"></div>
-            <div class="category-content">
-              <div class="category-icon">
-                <el-icon :size="28"><component :is="category.icon" /></el-icon>
-              </div>
-              <div class="category-info">
-                <h3 class="category-name">{{ category.name }}</h3>
-                <p class="category-desc">{{ category.description || '探索更多精彩' }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 精选推荐区域 -->
     <div class="featured-section">
       <div class="section-container">
@@ -47,10 +18,10 @@
           </router-link>
         </div>
 
-        <el-skeleton :loading="scenicLoading" animated :count="6" :throttle="500">
+        <el-skeleton :loading="scenicLoading" animated :count="8" :throttle="500">
           <template #template>
             <div class="scenic-grid">
-              <div v-for="i in 6" :key="i" class="skeleton-item">
+              <div v-for="i in 8" :key="i" class="skeleton-item">
                 <el-skeleton-item variant="image" style="width: 100%; height: 200px" />
                 <div style="padding: 16px;">
                   <el-skeleton-item variant="h3" style="width: 80%; margin-bottom: 8px" />
@@ -99,13 +70,13 @@
       </div>
     </div>
 
-    <!-- 旅游灵感区域 -->
+    <!-- 旅游攻略区域 -->
     <div class="inspiration-section">
       <div class="section-container">
         <div class="section-header">
           <h2 class="section-title">
             <span class="title-icon">💡</span>
-            旅游灵感
+            旅游攻略
           </h2>
         </div>
 
@@ -180,15 +151,6 @@ const baseAPI = process.env.VUE_APP_BASE_API || '/api'
 
 
 
-// 景点分类
-const categories = [
-  { id: 1, name: '自然风光', icon: 'Sunny', description: '山川湖海，自然奇观' },
-  { id: 2, name: '历史文化', icon: 'House', description: '古迹名胜，文化传承' },
-  { id: 3, name: '主题公园', icon: 'TakeawayBox', description: '欢乐体验，亲子时光' },
-  { id: 4, name: '城市地标', icon: 'OfficeBuilding', description: '都市风光，现代建筑' },
-  { id: 5, name: '乡村民俗', icon: 'Ship', description: '田园风情，民俗体验' }
-]
-
 // 景点数据
 const scenicList = ref([])
 const scenicLoading = ref(true)
@@ -222,11 +184,6 @@ const formatDate = (dateString) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-// 跳转到分类页面
-const goToCategory = (categoryId) => {
-  router.push(`/scenic/category/${categoryId}`)
-}
-
 // 跳转到景点详情
 const goToScenicDetail = (scenicId) => {
   router.push(`/scenic/${scenicId}`)
@@ -242,7 +199,7 @@ const fetchHotScenics = async () => {
   scenicLoading.value = true
   try {
     await request.get('/scenic/hot', {
-      limit: 4
+      limit: 8
     }, {
       showDefaultMsg: false,
       onSuccess: (data) => {
@@ -339,31 +296,9 @@ onMounted(() => {
 // Hero区域样式 - 全宽轮播图
 .hero-section {
   width: 100%;
-  margin-top: 0;
+  margin: 0;
+  padding: 0;
   position: relative;
-  left: 0;
-  transform: none;
-
-  :deep(.home-carousel) {
-    width: 100vw;
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
-
-    .el-carousel {
-      width: 100vw;
-    }
-
-    .el-carousel__item {
-      width: 100vw;
-    }
-
-    img {
-      width: 100vw;
-      height: auto;
-      display: block;
-    }
-  }
 }
 
 // 通用容器样式

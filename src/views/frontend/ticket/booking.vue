@@ -1,1211 +1,1952 @@
 <template>
-  <div class="booking-container">
-    <!-- 现代化页面头部 -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">
-          <span class="title-icon">🎫</span>
-          行程预订
-        </h1>
-        <p class="page-subtitle">
-          填写预订信息，轻松获取景点门票，开启美好旅程
-        </p>
-      </div>
-    </div>
+  <div class="travel-product-page">
+    <div class="main-content">
+      <!-- 左侧区域 -->
+      <div class="left-section">
+        <!-- 主图/主视频区域 -->
+        <div class="main-image-container">
+          <!-- 有视频时显示视频播放器 -->
+          <div v-if="hasVideo" class="video-container">
+            <video 
+              ref="videoPlayer"
+              :key="videoUrl"
+              :src="videoUrl" 
+              :poster="currentPoster"
+              :controls="showControls"
+              class="main-video"
+              @ended="handleVideoEnded"
+            >
+              您的浏览器不支持视频播放
+            </video>
+            <!-- 自定义播放按钮（点击触发视频播放并显示控制栏） -->
+            <div v-if="!showControls" class="play-button" @click="playVideo">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="white">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+          </div>
+          <!-- 没有视频时显示图片 -->
+          <img 
+            v-else
+            :src="currentImage" 
+            alt="产品图片" 
+            class="main-image" 
+          />
+          <div class="image-tags">
+            <span v-for="(tag, idx) in productTags" :key="idx" class="tag">{{ tag }}</span>
+          </div>
+        </div>
 
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-section">
-      <div class="section-container">
-        <el-skeleton :rows="20" animated />
-      </div>
-    </div>
+        <!-- 缩略图列表 -->
+        <div class="thumbnail-list">
+          <div
+            v-for="(item, index) in mediaList"
+            :key="index"
+            :class="['thumbnail-item', { active: hasVideo ? currentMediaIndex === index : currentImageIndex === index }]"
+            @click="selectMedia(index)"
+          >
+            <img :src="item.thumbnail" :alt="`封面${index + 1}`" />
+          </div>
+        </div>
 
-    <!-- 预订内容区域 -->
-    <div v-else class="booking-content">
-      <div class="section-container">
-        <div class="content-grid">
-          <!-- 左侧门票信息 -->
-          <div class="ticket-info-section">
-            <div class="info-card ticket-info-card" v-if="ticket">
-              <div class="card-header">
-                <h3 class="card-title">
-                  <el-icon><Ticket /></el-icon>
-                  门票信息
-                </h3>
-              </div>
+        <!-- 日历查看切换 -->
+        <div class="view-toggle">
+          <div class="toggle-buttons">
+            <button
+              :class="['toggle-btn', { active: viewMode === 'calendar' }]"
+              @click="viewMode = 'calendar'"
+            >
+              📅 日历查看
+            </button>
+            <button
+              :class="['toggle-btn', { active: viewMode === 'list' }]"
+              @click="viewMode = 'list'"
+            >
+              ≡ 列表查看
+            </button>
+          </div>
+        </div>
 
-              <div class="ticket-info">
-                <div class="ticket-header">
-                  <div class="ticket-name">{{ ticket.ticketName }}</div>
-                  <div class="ticket-type-badge">{{ ticket.ticketType }}</div>
-                </div>
-
-                <div class="price-section">
-                  <div class="price-info">
-                    <template v-if="ticket.discountPrice">
-                      <span class="discount-price">¥{{ ticket.discountPrice }}</span>
-                      <span class="original-price">¥{{ ticket.price }}</span>
-                      <span class="discount-badge">特惠</span>
-                    </template>
-                    <template v-else>
-                      <span class="normal-price">¥{{ ticket.price }}</span>
-                    </template>
-                  </div>
-                </div>
-
-                <div class="info-divider"></div>
-
-                <div class="ticket-details">
-                  <div class="detail-item">
-                    <div class="detail-label">
-                      <el-icon><Calendar /></el-icon>
-                      有效期
-                    </div>
-                    <div class="detail-value">{{ ticket.validPeriod }}</div>
-                  </div>
-
-                  <div class="detail-item">
-                    <div class="detail-label">
-                      <el-icon><Goods /></el-icon>
-                      库存
-                    </div>
-                    <div class="detail-value stock-value">{{ ticket.stock }} 张</div>
-                  </div>
-                </div>
-
-                <div class="ticket-description">
-                  <div class="description-header">门票说明</div>
-                  <div class="description-content">{{ ticket.description || '暂无说明' }}</div>
+        <!-- 日历组件 -->
+        <div v-if="viewMode === 'calendar'" class="calendar-container">
+          <div class="calendar-header">
+            <button class="nav-btn" @click="prevMonth">&lt;</button>
+            <span class="current-month">{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
+            <button class="nav-btn" @click="nextMonth">&gt;</button>
+          </div>
+          <div class="calendar-weekdays">
+            <span
+              v-for="day in weekDays"
+              :key="day"
+              :class="{ weekend: day === '日' || day === '六' }"
+            >
+              {{ day }}
+            </span>
+          </div>
+          <div class="calendar-days">
+            <div
+              v-for="(day, index) in calendarDays"
+              :key="index"
+              :class="[
+                'calendar-day',
+                { 'other-month': day.otherMonth },
+                { 'has-trip': day.hasTrip },
+                { selected: selectedDate === day.fullDate },
+                { weekend: day.isWeekend }
+              ]"
+              @click="toggleDateSelection(day)"
+            >
+              <span class="day-number">{{ day.day }}</span>
+              <div v-if="day.hasTrip && !day.otherMonth && day.batch" class="trip-info">
+                <span class="trip-status">{{ day.batch.status }}</span>
+                <div class="trip-prices">
+                  <span class="trip-price adult">成人 ¥{{ day.batch.finalAdultPrice }}</span>
+                  <span v-if="hasChildPrice" class="trip-price child">儿童 ¥{{ day.batch.finalChildPrice }}</span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- 右侧预订表单 -->
-          <div class="booking-form-section">
-            <div class="info-card booking-form-card">
-              <div class="card-header">
-                <h3 class="card-title">
-                  <el-icon><Edit /></el-icon>
-                  预订信息
-                </h3>
-              </div>
-
-              <el-form
-                :model="bookingForm"
-                :rules="rules"
-                ref="bookingFormRef"
-                label-position="top"
-                class="booking-form"
+        <!-- 列表查看 -->
+        <div v-if="viewMode === 'list'" class="list-container">
+          <table class="batch-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>星期</th>
+                <th>成人价</th>
+                <th v-if="hasChildPrice">儿童价</th>
+                <th>状态</th>
+                <th>余位</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="batch in batchDatesWithDisplay"
+                :key="batch.date"
+                :class="{ 'selected-row': selectedBatchDate === batch.date }"
               >
-                <div class="form-row">
-                  <el-form-item label="游玩日期" prop="visitDate" class="form-item">
-                    <el-date-picker
-                      v-model="bookingForm.visitDate"
-                      type="date"
-                      placeholder="选择游玩日期"
-                      :disabled-date="disabledDate"
-                      size="large"
-                      class="form-input"
-                    />
-                    <div class="form-tip">请选择您计划游玩的日期</div>
-                  </el-form-item>
-
-                  <el-form-item label="购买数量" prop="quantity" class="form-item">
-                    <el-input-number
-                      v-model="bookingForm.quantity"
-                      :min="1"
-                      :max="maxQuantity"
-                      @change="calculateTotal"
-                      size="large"
-                      class="form-input"
-                    />
-                    <div class="form-tip">最多可购买 {{ maxQuantity }} 张</div>
-                  </el-form-item>
-                </div>
-
-                <div class="form-row">
-                  <el-form-item label="游客姓名" prop="visitorName" class="form-item">
-                    <el-input
-                      v-model="bookingForm.visitorName"
-                      placeholder="请输入游客姓名"
-                      size="large"
-                      class="form-input"
-                    >
-                      <template #prefix>
-                        <el-icon><User /></el-icon>
-                      </template>
-                    </el-input>
-                  </el-form-item>
-
-                  <el-form-item label="联系电话" prop="visitorPhone" class="form-item">
-                    <el-input
-                      v-model="bookingForm.visitorPhone"
-                      placeholder="请输入联系电话"
-                      size="large"
-                      class="form-input"
-                    >
-                      <template #prefix>
-                        <el-icon><Phone /></el-icon>
-                      </template>
-                    </el-input>
-                  </el-form-item>
-                </div>
-
-                <el-form-item label="身份证号" prop="idCard" class="form-item full-width">
-                  <el-input
-                    v-model="bookingForm.idCard"
-                    placeholder="请输入身份证号（选填）"
-                    size="large"
-                    class="form-input"
+                <td>{{ batch.date }}</td>
+                <td>{{ batch.weekdayName }}</td>
+                <td class="list-price">¥{{ batch.finalAdultPrice }}</td>
+                <td v-if="hasChildPrice" class="list-price">¥{{ batch.finalChildPrice }}</td>
+                <td>
+                  <span :class="['status-tag', batch.status === '可报名' ? 'success' : 'warning']">
+                    {{ batch.status }}
+                  </span>
+                </td>
+                <td>{{ batch.remaining }}</td>
+                <td>
+                  <button
+                    :class="['select-btn', { selected: selectedBatchDate === batch.date }]"
+                    @click="toggleDateSelection(batch)"
                   >
-                    <template #prefix>
-                      <el-icon><CreditCard /></el-icon>
-                    </template>
-                  </el-input>
-                  <div class="form-tip">部分景点需要提供身份证信息</div>
-                </el-form-item>
+                    {{ selectedBatchDate === batch.date ? '已选择' : '选择' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="list-price-note">
+            <span>※ 最终价 = 套餐价 + 日期附加费 + 批次附加费</span>
+          </div>
+        </div>
+      </div>
 
-                <div class="total-section">
-                  <div class="total-amount">
-                    <span class="total-label">总金额:</span>
-                    <span class="amount">¥{{ totalAmount }}</span>
+      <!-- 右侧区域 -->
+      <div class="right-section">
+        <!-- 标题区域 -->
+        <div class="product-header">
+          <h1 class="product-title">{{ productInfo.title }}</h1>
+          <p class="product-subtitle">{{ productInfo.subtitle }}</p>
+        </div>
+
+        <!-- 编号和统计 -->
+        <div class="product-meta">
+          <span class="product-id">编号：{{ productInfo.code }}</span>
+          <div class="meta-right">
+            <span class="enrolled"><strong>{{ productInfo.enrolledCount }}</strong> 人已报名</span>
+            <span class="action-link" @click="handleCopy">[复制]</span>
+            <span class="action-link" @click="handleFavorite">☆收藏</span>
+          </div>
+        </div>
+
+        <!-- 价格区域 - 固定显示最低起价 -->
+        <div class="price-section">
+          <div class="price-row">
+            <span class="price-label">产品价格：</span>
+            <div class="price-info">
+              <span class="price-main">
+                <span class="currency">¥</span>
+                <span class="price-value">{{ minAdultPrice }}</span>
+                <span class="price-unit">元起（成人）</span>
+              </span>
+              <span v-if="hasChildPrice" class="price-main child">
+                <span class="currency">¥</span>
+                <span class="price-value">{{ minChildPrice }}</span>
+                <span class="price-unit">元起（儿童）</span>
+              </span>
+            </div>
+            <span class="duration-tag">{{ productInfo.days }}天</span>
+            <a href="#" class="price-explain" @click.prevent="showPriceDetail">起价说明？</a>
+          </div>
+          <div class="price-note">
+            <span>※ 起价为标准套餐+标准批次+平日出发价格</span>
+          </div>
+        </div>
+
+        <!-- VIP会员横幅 -->
+        <div class="vip-banner">
+          <span class="vip-text">🎖️ 开通侠客行会员，立享9.5折优惠</span>
+          <button class="vip-btn" @click="handleOpenVip">立即开通 &gt;</button>
+        </div>
+
+        <!-- 产品特色 -->
+        <div class="info-row info-row--feature">
+          <span class="info-label">产品特色：</span>
+          <div class="feature-tags">
+            <span v-for="(feature, idx) in productFeatures" :key="idx" class="feature-tag">
+              {{ feature }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 供应商 -->
+        <div class="info-row">
+          <span class="info-label">供 应 商：</span>
+          <a href="#" class="info-link" @click.prevent="viewSupplier">{{ supplierInfo.name }}</a>
+        </div>
+
+        <!-- 出发地 -->
+        <div class="info-row">
+          <span class="info-label">出 发 地：</span>
+          <a href="#" class="info-link" @click.prevent="filterByDeparture">{{ productInfo.departure }}</a>
+        </div>
+
+        <!-- 退订政策 -->
+        <div class="info-row">
+          <span class="info-label">退订政策：</span>
+          <span class="info-text">{{ refundPolicy.support }} {{ refundPolicy.special }}</span>
+          <a href="#" class="info-link" @click.prevent="showRefundPolicy">查看政策 &gt;</a>
+        </div>
+
+        <!-- 出团通知 -->
+        <div class="info-row">
+          <span class="info-label">出团通知：</span>
+          <span class="info-text">{{ productInfo.notice }}</span>
+        </div>
+
+        <!-- 行程套餐 -->
+        <div class="package-row">
+          <span class="package-label">行程套餐：</span>
+          <div class="package-options">
+            <button
+              v-for="pkg in tripPackages"
+              :key="pkg.id"
+              :class="['package-btn', { active: selectedPackage === pkg.id }]"
+              @click="selectTripPackage(pkg.id)"
+            >
+              <span class="package-name">{{ pkg.name }}</span>
+              <div class="package-prices">
+                <span class="package-price adult">成人 ¥{{ pkg.adultPrice }}</span>
+                <span v-if="hasChildPrice" class="package-price child">儿童 ¥{{ pkg.childPrice }}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 批次套餐 -->
+        <div class="package-row">
+          <span class="package-label">批次套餐：</span>
+          <div class="package-options">
+            <button
+              v-for="pkg in batchPackages"
+              :key="pkg.id"
+              :class="['package-btn', { active: selectedBatchPackage === pkg.id }]"
+              @click="selectBatchPackage(pkg.id)"
+            >
+              {{ pkg.name }}
+              <span v-if="pkg.extraFeePerPerson > 0" class="package-price">+¥{{ pkg.extraFeePerPerson }}/人</span>
+              <span v-else class="package-price-free">标准</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 预订选择区域 -->
+      <div class="booking-section-wrapper">
+        <div class="booking-section">
+          <div class="booking-items">
+            <div class="booking-item">
+              <span class="booking-label">套餐：</span>
+              <select v-model="selectedPackageType" class="booking-select" @change="handleBatchPackageSelect">
+                <option value="">请选择批次套餐</option>
+                <option v-for="pkg in batchPackages" :key="pkg.id" :value="String(pkg.id)">
+                  {{ pkg.name }} {{ pkg.extraFeePerPerson > 0 ? `(+¥${pkg.extraFeePerPerson}/人)` : '' }}
+                </option>
+              </select>
+            </div>
+            <div class="booking-item">
+              <span class="booking-label">行程：</span>
+              <select v-model="selectedTrip" class="booking-select" @change="handleTripSelect">
+                <option value="">请选择行程套餐</option>
+                <option v-for="pkg in tripPackages" :key="pkg.id" :value="String(pkg.id)">
+                  {{ pkg.name }} (成人¥{{ pkg.adultPrice }}<span v-if="hasChildPrice">/儿童¥{{ pkg.childPrice }}</span>)
+                </option>
+              </select>
+            </div>
+            <div class="booking-item">
+              <span class="booking-label">批次：</span>
+              <select v-model="selectedBatchDate" class="booking-select" @change="handleBatchDateChange">
+                <option value="">请选择出发日期</option>
+                <option v-for="batch in batchDatesWithDisplay" :key="batch.date" :value="batch.date">
+                  {{ batch.date }} ({{ batch.weekdayName }}) - 成人¥{{ batch.finalAdultPrice }}<span v-if="hasChildPrice"> / 儿童¥{{ batch.finalChildPrice }}</span>
+                </option>
+              </select>
+            </div>
+            <div class="booking-item">
+              <span class="booking-label">成人：</span>
+              <div
+                class="number-input-wrapper"
+                @mouseenter="showAdultDropdown = true"
+                @mouseleave="showAdultDropdown = false"
+              >
+                <div class="number-input">
+                  <button class="num-btn" @click="decreaseAdult">-</button>
+                  <input type="text" :value="adultCount" readonly />
+                  <button class="num-btn" @click="increaseAdult">+</button>
+                </div>
+                <div v-show="showAdultDropdown" class="person-dropdown">
+                  <div
+                    v-for="num in personCountOptions"
+                    :key="`adult-${num}`"
+                    :class="['dropdown-option', { active: adultCount === num }]"
+                    @click="setAdultCount(num)"
+                  >
+                    {{ num }}人
                   </div>
                 </div>
-
-                <div class="form-actions">
-                  <el-button
-                    size="large"
-                    @click="goBack"
-                    class="back-btn"
-                  >
-                    <el-icon><Back /></el-icon>
-                    返回
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    size="large"
-                    @click="submitBooking"
-                    :disabled="loading"
-                    class="submit-btn"
-                  >
-                    <el-icon><Check /></el-icon>
-                    提交订单
-                  </el-button>
+              </div>
+            </div>
+            <div v-if="hasChildPrice" class="booking-item">
+              <span class="booking-label">儿童：</span>
+              <div
+                class="number-input-wrapper"
+                @mouseenter="showChildDropdown = true"
+                @mouseleave="showChildDropdown = false"
+              >
+                <div class="number-input">
+                  <button class="num-btn" @click="decreaseChild">-</button>
+                  <input type="text" :value="childCount" readonly />
+                  <button class="num-btn" @click="increaseChild">+</button>
                 </div>
-              </el-form>
+                <div v-show="showChildDropdown" class="person-dropdown">
+                  <div
+                    v-for="num in personCountOptions"
+                    :key="`child-${num}`"
+                    :class="['dropdown-option', { active: childCount === num }]"
+                    @click="setChildCount(num)"
+                  >
+                    {{ num }}人
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="isSelectionComplete" class="booking-total">
+              <div class="total-detail">
+                <span class="total-label">单价：</span>
+                <span class="total-unit">成人¥{{ currentFinalAdultPrice }}<span v-if="hasChildPrice"> / 儿童¥{{ currentFinalChildPrice }}</span></span>
+              </div>
+              <div class="total-amount">
+                <span class="total-label">总额：</span>
+                <span class="total-value">¥{{ totalPrice }}</span>
+              </div>
             </div>
           </div>
+          <button class="submit-btn" @click="handleBooking">立刻报名</button>
         </div>
       </div>
     </div>
-
-    <!-- 支付对话框 -->
-    <el-dialog
-      title="订单支付"
-      v-model="payDialogVisible"
-      width="500px"
-      :close-on-click-modal="false"
-      
-      class="payment-dialog"
-    >
-      <div class="pay-dialog-content">
-        <div class="order-info">
-          <div class="order-header">
-            <el-icon><Ticket /></el-icon>
-            <span>订单详情</span>
-          </div>
-          
-          <div class="order-details">
-            <div class="order-item">
-              <span class="order-label">订单号:</span>
-              <span class="order-value">{{ createdOrder.orderNo }}</span>
-            </div>
-            <div class="order-item">
-              <span class="order-label">门票名称:</span>
-              <span class="order-value">{{ ticket?.ticketName }}</span>
-            </div>
-            <div class="order-item">
-              <span class="order-label">游玩日期:</span>
-              <span class="order-value">{{ formatDate(createdOrder.visitDate) }}</span>
-            </div>
-            <div class="order-item">
-              <span class="order-label">数量:</span>
-              <span class="order-value">{{ createdOrder.quantity }} 张</span>
-            </div>
-            <div class="order-item total-item">
-              <span class="order-label">总金额:</span>
-              <span class="order-value amount">¥{{ createdOrder.totalAmount }}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="payment-methods">
-          <div class="payment-header">
-            <el-icon><Wallet /></el-icon>
-            <span>支付方式</span>
-          </div>
-          
-          <el-radio-group v-model="paymentMethod" class="payment-options">
-            <el-radio label="WECHAT">
-              <div class="payment-option">
-                <el-icon class="payment-icon wechat-icon"><Money /></el-icon>
-                <span>微信支付</span>
-              </div>
-            </el-radio>
-            <el-radio label="ALIPAY">
-              <div class="payment-option">
-                <el-icon class="payment-icon alipay-icon"><Money /></el-icon>
-                <span>支付宝</span>
-              </div>
-            </el-radio>
-            <el-radio label="BANK_CARD">
-              <div class="payment-option">
-                <el-icon class="payment-icon bank-icon"><CreditCard /></el-icon>
-                <span>银行卡</span>
-              </div>
-            </el-radio>
-          </el-radio-group>
-        </div>
-        
-        <div class="payment-info" v-if="paymentMethod">
-          <template v-if="paymentMethod === 'ALIPAY'">
-            <div class="payment-tip">
-              <el-icon><InfoFilled /></el-icon>
-              <span>点击下方"去支付"按钮，跳转到支付宝支付页面</span>
-            </div>
-          </template>
-          <template v-else>
-            <div class="qrcode-tip">
-              <el-icon><InfoFilled /></el-icon>
-              <span>请选择支付方式完成支付</span>
-            </div>
-          </template>
-        </div>
-      </div>
-      
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="cancelOrder" :icon="Close">取消订单</el-button>
-          <template v-if="paymentMethod === 'ALIPAY'">
-            <el-button type="primary" @click="goToAlipay" :icon="Right">去支付</el-button>
-          </template>
-          <template v-else>
-            <el-button type="primary" @click="confirmPayment" :icon="Check">确认已支付</el-button>
-          </template>
-        </span>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
-import { useUserStore } from '@/store/user'
-import { 
-  Ticket, 
-  Calendar, 
-  Goods, 
-  Edit, 
-  User, 
-  Phone, 
-  CreditCard, 
-  Back, 
-  Check, 
-  Close, 
-  Right, 
-  Wallet, 
-  Money, 
-  InfoFilled 
-} from '@element-plus/icons-vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+// import { getProductDetail } from '@/api/product' // 后端API
+
+// =============================================
+// 常量定义
+// =============================================
+const MAX_PERSON_COUNT = 50
+const personCountOptions = Array.from({ length: 51 }, (_, i) => i)
+const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 const route = useRoute()
-const router = useRouter()
-const userStore = useUserStore()
 
-// 门票ID
-const ticketId = computed(() => route.params.id)
-
-// 门票信息
-const ticket = ref(null)
-const loading = ref(false)
-
-// 表单引用
-const bookingFormRef = ref(null)
-
-// 支付对话框
-const payDialogVisible = ref(false)
-const paymentMethod = ref('')
-const createdOrder = ref({})
-
-// 预订表单数据
-const bookingForm = reactive({
-  ticketId: null,
-  visitDate: null,
-  quantity: 1,
-  visitorName: '',
-  visitorPhone: '',
-  idCard: ''
+// =============================================
+// 响应式数据
+// =============================================
+// 产品信息
+const productInfo = ref({
+  title: '',
+  subtitle: '',
+  code: '',
+  days: 1,
+  departure: '',
+  enrolledCount: 0,
+  notice: ''
 })
 
-// 表单验证规则
-const rules = {
-  visitDate: [
-    { required: true, message: '请选择游玩日期', trigger: 'change' }
-  ],
-  quantity: [
-    { required: true, message: '请选择购买数量', trigger: 'change' },
-    { type: 'number', min: 1, message: '购买数量至少为1', trigger: 'change' }
-  ],
-  visitorName: [
-    { required: true, message: '请输入游客姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '姓名长度应在2-20个字符之间', trigger: 'blur' }
-  ],
-  visitorPhone: [
-    { required: true, message: '请输入联系电话', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
-  ],
-  idCard: [
-    { pattern: /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/, message: '请输入正确的身份证号码', trigger: 'blur' }
-  ]
-}
+const productTags = ref([])
+const productFeatures = ref([])
+const supplierInfo = ref({ name: '' })
+const refundPolicy = ref({ support: '', special: '' })
 
-// 计算属性：最大购买数量
-const maxQuantity = computed(() => {
-  return ticket.value ? ticket.value.stock : 1
+// =============================================
+// 媒体数据配置（从后端获取）
+// =============================================
+const hasVideo = ref(false)           // 是否有视频
+const videoUrl = ref('')              // 视频地址
+const showControls = ref(false)       // 控制栏显示状态
+const mediaList = ref([])             // 封面列表（图片或视频封面）
+const currentMediaIndex = ref(0)      // 当前选中的封面索引
+const currentImageIndex = ref(0)      // 当前显示的图片索引（无视频时）
+const videoPlayer = ref(null)         // 视频播放器引用
+
+// 当前视频封面
+const currentPoster = computed(() => {
+  return mediaList.value[currentMediaIndex.value]?.poster || mediaList.value[0]?.poster || ''
 })
 
-// 计算属性：总金额
-const totalAmount = ref(0)
+// 没有视频时使用的图片
+const productImages = ref({
+  main: [],
+  thumbnails: []
+})
 
-// 计算总金额
-const calculateTotal = () => {
-  if (!ticket.value) return 0
+const currentImage = computed(() => {
+  return productImages.value.main[currentImageIndex.value] || ''
+})
 
-  const price = ticket.value.discountPrice || ticket.value.price
-  totalAmount.value = (price * bookingForm.quantity).toFixed(2)
-}
+// =============================================
+// 行程套餐数据
+// =============================================
+const tripPackages = ref([])
 
-// 获取门票详情
-const fetchTicketDetail = async () => {
-  loading.value = true
-  try {
-    await request.get(`/ticket/${ticketId.value}`, {}, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        ticket.value = res
-        bookingForm.ticketId = res.id
-        
-        // 默认选择当前日期
-        if (!bookingForm.visitDate) {
-          bookingForm.visitDate = new Date()
-        }
-        
-        // 如果已登录，预填用户信息
-        if (userStore.isLoggedIn && userStore.userInfo) {
-          bookingForm.visitorName = userStore.userInfo.name || userStore.userInfo.nickname || ''
-          bookingForm.visitorPhone = userStore.userInfo.phone || ''
-        }
-        
-        calculateTotal()
-      }
-    })
-  } catch (error) {
-    ElMessage.error('获取门票信息失败')
-    console.error('获取门票详情失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
+// 判断是否有儿童价
+const hasChildPrice = computed(() => {
+  return tripPackages.value.some(pkg => 
+    pkg.childPrice !== null && 
+    pkg.childPrice !== undefined && 
+    pkg.childPrice > 0
+  )
+})
 
-// 禁用的日期（今天之前的日期不可选）
-const disabledDate = (time) => {
-  return time.getTime() < Date.now() - 8.64e7 // 不能选择今天之前的日期
-}
+// 批次套餐数据
+const batchPackages = ref([])
 
-// 提交预订
-const submitBooking = async () => {
-  if (!userStore.isLoggedIn) {
-    ElMessage.warning('请先登录')
-    router.push('/login?redirect=' + encodeURIComponent(route.fullPath))
-    return
-  }
+// 出发日期数据
+const batchDates = ref([])
 
-  bookingFormRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        await request.post('/order', bookingForm, {
-          successMsg: '订单创建成功',
-          onSuccess: (res) => {
-            createdOrder.value = res
-            payDialogVisible.value = true
-          }
-        })
-      } catch (error) {
-        console.error('创建订单失败:', error)
-      } finally {
-        loading.value = false
-      }
+// =============================================
+// UI 状态
+// =============================================
+const viewMode = ref('calendar')
+const currentYear = ref(new Date().getFullYear())
+const currentMonth = ref(new Date().getMonth() + 1)
+const selectedDate = ref('')
+const selectedBatchDate = ref('')
+const selectedPackage = ref(1)
+const selectedBatchPackage = ref(1)
+const selectedPackageType = ref('')
+const selectedTrip = ref('')
+const adultCount = ref(1)
+const childCount = ref(0)
+const showAdultDropdown = ref(false)
+const showChildDropdown = ref(false)
+const currentBatch = ref(null)
+
+// =============================================
+// 计算属性 - 最低价
+// =============================================
+const minAdultPrice = computed(() => {
+  if (tripPackages.value.length === 0) return 0
+  return Math.min(...tripPackages.value.map(p => p.adultPrice))
+})
+
+const minChildPrice = computed(() => {
+  if (!hasChildPrice.value) return 0
+  const packagesWithChild = tripPackages.value.filter(p => p.childPrice !== null && p.childPrice > 0)
+  if (packagesWithChild.length === 0) return 0
+  return Math.min(...packagesWithChild.map(p => p.childPrice))
+})
+
+// =============================================
+// 计算属性 - 选中的套餐
+// =============================================
+const selectedTripPackage = computed(() => {
+  return tripPackages.value.find(pkg => pkg.id === selectedPackage.value)
+})
+
+const selectedBatchPackageData = computed(() => {
+  return batchPackages.value.find(pkg => pkg.id === selectedBatchPackage.value)
+})
+
+// =============================================
+// 计算属性 - 最终价格
+// =============================================
+const currentFinalAdultPrice = computed(() => {
+  const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
+  const dateAdultExtra = currentBatch.value?.adultDateExtraFee || 0
+  const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+  return tripAdultPrice + dateAdultExtra + batchExtra
+})
+
+const currentFinalChildPrice = computed(() => {
+  if (!hasChildPrice.value) return 0
+  const tripChildPrice = selectedTripPackage.value?.childPrice ?? selectedTripPackage.value?.adultPrice ?? 0
+  const dateChildExtra = currentBatch.value?.childDateExtraFee || 0
+  const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+  return tripChildPrice + dateChildExtra + batchExtra
+})
+
+const totalPrice = computed(() => {
+  const adultTotal = adultCount.value * currentFinalAdultPrice.value
+  const childTotal = hasChildPrice.value ? childCount.value * currentFinalChildPrice.value : 0
+  return adultTotal + childTotal
+})
+
+// =============================================
+// 计算属性 - 批次列表展示
+// =============================================
+const batchDatesWithDisplay = computed(() => {
+  const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
+  const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
+  const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+
+  return batchDates.value.map(batch => {
+    const date = new Date(batch.date)
+    return {
+      ...batch,
+      weekdayName: weekdayNames[date.getDay()],
+      finalAdultPrice: tripAdultPrice + (batch.adultDateExtraFee || 0) + batchExtra,
+      finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0
     }
   })
+})
+
+// =============================================
+// 计算属性 - 日历
+// =============================================
+const getBatchForDate = (dateStr) => {
+  const batch = batchDates.value.find(b => b.date === dateStr)
+  if (!batch) return null
+
+  const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
+  const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
+  const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+
+  return {
+    ...batch,
+    finalAdultPrice: tripAdultPrice + (batch.adultDateExtraFee || 0) + batchExtra,
+    finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0
+  }
 }
 
-// 确认支付
-const confirmPayment = async () => {
-  if (!paymentMethod.value) {
-    ElMessage.warning('请选择支付方式')
+const getWeekday = (dateStr) => {
+  const date = new Date(dateStr)
+  return weekdayNames[date.getDay()]
+}
+
+const calendarDays = computed(() => {
+  const days = []
+  const firstDay = new Date(currentYear.value, currentMonth.value - 1, 1)
+  const lastDay = new Date(currentYear.value, currentMonth.value, 0)
+  const startDay = firstDay.getDay()
+
+  const prevMonthLastDay = new Date(currentYear.value, currentMonth.value - 1, 0).getDate()
+  for (let i = startDay - 1; i >= 0; i--) {
+    days.push({ day: prevMonthLastDay - i, otherMonth: true, hasTrip: false, isWeekend: false, fullDate: null, batch: null })
+  }
+
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    const date = new Date(currentYear.value, currentMonth.value - 1, i)
+    const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(i).padStart(2, '0')}`
+    const batch = getBatchForDate(dateStr)
+    days.push({
+      day: i,
+      otherMonth: false,
+      hasTrip: !!batch,
+      isWeekend: date.getDay() === 0 || date.getDay() === 6,
+      fullDate: dateStr,
+      batch: batch || null
+    })
+  }
+
+  const remainingDays = 42 - days.length
+  for (let i = 1; i <= remainingDays; i++) {
+    days.push({ day: i, otherMonth: true, hasTrip: false, isWeekend: false, fullDate: null, batch: null })
+  }
+
+  return days
+})
+
+const isSelectionComplete = computed(() => {
+  return selectedPackageType.value && selectedTrip.value && selectedBatchDate.value && adultCount.value > 0
+})
+
+// =============================================
+// 方法
+// =============================================
+const prevMonth = () => {
+  if (currentMonth.value === 1) {
+    currentMonth.value = 12
+    currentYear.value--
+  } else {
+    currentMonth.value--
+  }
+}
+
+const nextMonth = () => {
+  if (currentMonth.value === 12) {
+    currentMonth.value = 1
+    currentYear.value++
+  } else {
+    currentMonth.value++
+  }
+}
+
+const toggleDateSelection = (item) => {
+  if ('fullDate' in item) {
+    if (item.otherMonth || !item.hasTrip || !item.batch) return
+    if (selectedDate.value === item.fullDate) {
+      selectedDate.value = ''
+      selectedBatchDate.value = ''
+      currentBatch.value = null
+    } else {
+      selectedDate.value = item.fullDate
+      selectedBatchDate.value = item.fullDate
+      currentBatch.value = item.batch
+    }
+  } else {
+    if (selectedBatchDate.value === item.date) {
+      selectedDate.value = ''
+      selectedBatchDate.value = ''
+      currentBatch.value = null
+    } else {
+      selectedDate.value = item.date
+      selectedBatchDate.value = item.date
+      currentBatch.value = item
+    }
+  }
+}
+
+// 选择媒体（切换封面/图片）
+// 核心修改：只暂停视频，不重置进度
+const selectMedia = (index) => {
+  if (hasVideo.value) {
+    // 有视频时：切换封面，只暂停视频（保留进度），隐藏控制栏
+    if (videoPlayer.value) {
+      videoPlayer.value.pause()           // 只暂停，不重置 currentTime
+      showControls.value = false          // 隐藏控制栏，让自定义播放按钮重新显示
+    }
+    // 切换封面
+    currentMediaIndex.value = index
+  } else {
+    // 无视频时：切换图片
+    currentImageIndex.value = index
+  }
+}
+
+// 播放视频
+const playVideo = () => {
+  if (videoPlayer.value) {
+    videoPlayer.value.play()
+    showControls.value = true
+  }
+}
+
+// 视频播放结束
+const handleVideoEnded = () => {
+  // 可选：视频结束后重置控制栏，重新显示播放按钮
+  // showControls.value = false
+}
+
+const selectTripPackage = (id) => {
+  selectedPackage.value = id
+  selectedTrip.value = String(id)
+  refreshCurrentBatchPrice()
+}
+
+const selectBatchPackage = (id) => {
+  selectedBatchPackage.value = id
+  selectedPackageType.value = String(id)
+  refreshCurrentBatchPrice()
+}
+
+const handleTripSelect = () => {
+  if (selectedTrip.value) {
+    selectedPackage.value = parseInt(selectedTrip.value)
+  }
+  refreshCurrentBatchPrice()
+}
+
+const handleBatchPackageSelect = () => {
+  if (selectedPackageType.value) {
+    selectedBatchPackage.value = parseInt(selectedPackageType.value)
+  }
+  refreshCurrentBatchPrice()
+}
+
+const handleBatchDateChange = () => {
+  if (selectedBatchDate.value) {
+    const batch = batchDatesWithDisplay.value.find(b => b.date === selectedBatchDate.value)
+    currentBatch.value = batch || null
+    selectedDate.value = selectedBatchDate.value
+  }
+}
+
+const refreshCurrentBatchPrice = () => {
+  if (selectedBatchDate.value) {
+    const batch = batchDatesWithDisplay.value.find(b => b.date === selectedBatchDate.value)
+    if (batch) currentBatch.value = batch
+  }
+}
+
+const increaseAdult = () => {
+  if (adultCount.value < MAX_PERSON_COUNT) adultCount.value++
+}
+const decreaseAdult = () => {
+  if (adultCount.value > 0) adultCount.value--
+}
+const setAdultCount = (num) => {
+  adultCount.value = num
+  showAdultDropdown.value = false
+}
+
+const increaseChild = () => {
+  if (childCount.value < MAX_PERSON_COUNT) childCount.value++
+}
+const decreaseChild = () => {
+  if (childCount.value > 0) childCount.value--
+}
+const setChildCount = (num) => {
+  childCount.value = num
+  showChildDropdown.value = false
+}
+
+const initDefaultSelection = () => {
+  if (batchDates.value.length > 0) {
+    const firstBatch = batchDates.value[0]
+    selectedBatchDate.value = firstBatch.date
+    selectedDate.value = firstBatch.date
+    
+    const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
+    const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
+    const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+    
+    currentBatch.value = {
+      ...firstBatch,
+      finalAdultPrice: tripAdultPrice + (firstBatch.adultDateExtraFee || 0) + batchExtra,
+      finalChildPrice: hasChildPrice.value ? (tripChildPrice + (firstBatch.childDateExtraFee || 0) + batchExtra) : 0
+    }
+  }
+}
+
+// =============================================
+// 从后端获取数据
+// =============================================
+const fetchProductDetail = async () => {
+  try {
+    // TODO: 替换为真实的API调用
+    // const productId = route.params.id
+    // const res = await getProductDetail(productId)
+    // if (res.code === 0) {
+    //   const data = res.data
+    //   productInfo.value = data.productInfo
+    //   productTags.value = data.tags || []
+    //   productFeatures.value = data.features || []
+    //   supplierInfo.value = data.supplier || { name: '' }
+    //   refundPolicy.value = data.refundPolicy || { support: '', special: '' }
+    //   tripPackages.value = data.tripPackages || []
+    //   batchPackages.value = data.batchPackages || []
+    //   batchDates.value = data.batchDates || []
+    //   
+    //   // 处理图片和视频 - 根据是否有视频链接自动切换模式
+    //   if (data.video && data.video.url) {
+    //     hasVideo.value = true
+    //     videoUrl.value = data.video.url
+    //     mediaList.value = data.video.posters || data.images?.thumbnails?.map(thumb => ({
+    //       thumbnail: thumb,
+    //       poster: thumb
+    //     })) || []
+    //   } else {
+    //     hasVideo.value = false
+    //     productImages.value = data.images || { main: [], thumbnails: [] }
+    //     mediaList.value = productImages.value.thumbnails.map((thumb, idx) => ({
+    //       thumbnail: thumb,
+    //       poster: productImages.value.main[idx] || thumb
+    //     }))
+    //   }
+    //   
+    //   // 设置默认选中
+    //   if (tripPackages.value.length > 0) {
+    //     selectedPackage.value = tripPackages.value[0].id
+    //     selectedTrip.value = String(tripPackages.value[0].id)
+    //   }
+    //   if (batchPackages.value.length > 0) {
+    //     selectedBatchPackage.value = batchPackages.value[0].id
+    //     selectedPackageType.value = String(batchPackages.value[0].id)
+    //   }
+    //   
+    //   initDefaultSelection()
+    // }
+
+    // ========== Mock 数据（演示用，对接后端时删除）==========
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    productInfo.value = {
+      title: '极道·小鹿池 | 金佛山强度穿越，重庆毕业线',
+      subtitle: '<极道之徒·小鹿池>18km累计爬升1200米，龙岩城-小鹿池-石人峰，新人勿入！！！',
+      code: 1,
+      days: 1,
+      departure: '重庆',
+      enrolledCount: 253,
+      notice: '周边游提前1天，国内游提前3天，出境游提前3-5天，APP和短信群发出团通知'
+    }
+    
+    productTags.value = ['跟团游', '户外游', '登山徒步']
+    productFeatures.value = ['强度穿越', '山城经典', '林海秘境', '小众线路']
+    supplierInfo.value = { name: '重庆侠客行国际旅行社有限公司' }
+    refundPolicy.value = { support: '支持退款', special: '特殊原因退订保障' }
+    
+    tripPackages.value = [
+      { id: 1, name: '极道·小鹿池（标准套餐）', adultPrice: 158, childPrice: 79 },
+      { id: 2, name: '极道·小鹿池（VIP套餐）', adultPrice: 198, childPrice: 99 },
+      { id: 3, name: '极道·小鹿池（豪华套餐）', adultPrice: 258, childPrice: 129 }
+    ]
+    
+    batchPackages.value = [
+      { id: 1, name: '工贸集散·标准套餐', extraFeePerPerson: 0 },
+      { id: 2, name: '工贸集散·含餐套餐', extraFeePerPerson: 30 },
+      { id: 3, name: '市区上门接送', extraFeePerPerson: 50 }
+    ]
+    
+    batchDates.value = [
+      { date: '2026-05-05', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 28 },
+      { date: '2026-05-10', adultDateExtraFee: 20, childDateExtraFee: 10, status: '可报名', remaining: 15 },
+      { date: '2026-05-12', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 30 },
+      { date: '2026-05-17', adultDateExtraFee: 20, childDateExtraFee: 10, status: '可报名', remaining: 22 },
+      { date: '2026-05-21', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 30 },
+      { date: '2026-06-01', adultDateExtraFee: 50, childDateExtraFee: 25, status: '可报名', remaining: 45 }
+    ]
+
+    // 设置日历默认月份为最早有行程的月份
+    const setDefaultCalendarMonth = () => {
+      if (batchDates.value.length > 0) {
+        // 找出最早的日期
+        const earliestDate = batchDates.value.reduce((earliest, current) => {
+          return new Date(current.date) < new Date(earliest.date) ? current : earliest
+        }, batchDates.value[0])
+        
+        const earliestYear = new Date(earliestDate.date).getFullYear()
+        const earliestMonth = new Date(earliestDate.date).getMonth() + 1
+        
+        currentYear.value = earliestYear
+        currentMonth.value = earliestMonth
+      }
+    }
+
+    // 调用这个函数
+    setDefaultCalendarMonth()
+    
+    // 根据是否有视频链接自动决定模式
+    // 有视频链接时使用视频模式
+    const hasVideoLink = true  // 改为 false 测试纯图片模式
+    const videoLink = 'https://vjs.zencdn.net/v/oceans.mp4'
+    
+    if (hasVideoLink && videoLink) {
+      // 视频模式
+      hasVideo.value = true
+      videoUrl.value = videoLink
+      mediaList.value = [
+        { thumbnail: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop' },
+        { thumbnail: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop' },
+        { thumbnail: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&h=600&fit=crop' },
+        { thumbnail: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=800&h=600&fit=crop' },
+        { thumbnail: 'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=800&h=600&fit=crop' }
+      ]
+    } else {
+      // 纯图片模式
+      hasVideo.value = false
+      productImages.value = {
+        main: [
+          'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop',
+          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&h=600&fit=crop',
+          'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=800&h=600&fit=crop',
+          'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=800&h=600&fit=crop'
+        ],
+        thumbnails: [
+          'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=150&h=100&fit=crop',
+          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=150&h=100&fit=crop',
+          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=150&h=100&fit=crop',
+          'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=150&h=100&fit=crop',
+          'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=150&h=100&fit=crop'
+        ]
+      }
+      mediaList.value = productImages.value.thumbnails.map((thumb, idx) => ({
+        thumbnail: thumb,
+        poster: productImages.value.main[idx] || thumb
+      }))
+    }
+    
+    // 设置默认选中
+    if (tripPackages.value.length > 0) {
+      selectedPackage.value = tripPackages.value[0].id
+      selectedTrip.value = String(tripPackages.value[0].id)
+    }
+    if (batchPackages.value.length > 0) {
+      selectedBatchPackage.value = batchPackages.value[0].id
+      selectedPackageType.value = String(batchPackages.value[0].id)
+    }
+    
+    initDefaultSelection()
+  } catch (error) {
+    console.error('获取产品详情失败:', error)
+    ElMessage.error('加载产品信息失败')
+  }
+}
+
+const handleBooking = async () => {
+  if (!selectedPackageType.value) {
+    ElMessage.warning('请选择批次套餐')
+    return
+  }
+  if (!selectedTrip.value) {
+    ElMessage.warning('请选择行程套餐')
+    return
+  }
+  if (!selectedBatchDate.value) {
+    ElMessage.warning('请选择出发日期')
+    return
+  }
+  if (adultCount.value === 0) {
+    ElMessage.warning('请选择成人数量')
     return
   }
 
-  loading.value = true
+  const orderData = {
+    productId: productInfo.value.code,
+    tripPackageId: selectedPackage.value,
+    batchPackageId: selectedBatchPackage.value,
+    batchDate: selectedBatchDate.value,
+    adultCount: adultCount.value,
+    childCount: hasChildPrice.value ? childCount.value : 0
+  }
+
   try {
-    await request.post(`/order/${createdOrder.value.id}/pay`, null, {
-      params: {
-        paymentMethod: paymentMethod.value
-      },
-      successMsg: '支付成功',
-      onSuccess: () => {
-        payDialogVisible.value = false
-        router.push('/orders')
+    await ElMessageBox.confirm(
+      `请确认订单信息：\n\n` +
+      `行程套餐：${selectedTripPackage.value?.name}\n` +
+      `批次套餐：${selectedBatchPackageData.value?.name}\n` +
+      `出发日期：${selectedBatchDate.value}\n` +
+      `成人：${adultCount.value}人 × ¥${currentFinalAdultPrice.value}\n` +
+      `${hasChildPrice.value ? `儿童：${childCount.value}人 × ¥${currentFinalChildPrice.value}\n` : ''}` +
+      `────────────────\n` +
+      `预计总额：¥${totalPrice.value}\n\n` +
+      `（最终价格以系统计算为准）`,
+      '确认订单信息',
+      {
+        confirmButtonText: '确认提交',
+        cancelButtonText: '返回修改',
+        type: 'info'
       }
-    })
-  } catch (error) {
-    console.error('支付订单失败:', error)
-  } finally {
-    loading.value = false
+    )
+    
+    // TODO: 调用后端API创建订单
+    // const res = await createOrder(orderData)
+    
+    console.log('提交订单参数:', orderData)
+    ElMessage.success(`预订成功，订单号：BK${Date.now()}`)
+    
+  } catch {
+    ElMessage.info('已取消')
   }
 }
 
-// 跳转到支付宝支付页面
-const goToAlipay = () => {
-  if (createdOrder.value && createdOrder.value.id) {
-    router.push(`/payment/alipay/${createdOrder.value.id}`)
-  } else {
-    ElMessage.error('订单信息错误')
+const handleCopy = () => {
+  const text = `${productInfo.value.title} - ${productInfo.value.code}`
+  navigator.clipboard.writeText(text)
+  ElMessage.success('已复制')
+}
+
+const handleFavorite = () => {
+  ElMessage.info('收藏功能开发中')
+}
+
+const showPriceDetail = () => {
+  ElMessage.info('起价为标准套餐+标准批次+平日出发价格')
+}
+
+const handleOpenVip = () => {
+  ElMessage.info('VIP开通功能开发中，敬请期待')
+}
+
+const viewSupplier = () => {
+  ElMessage.info(`供应商：${supplierInfo.value.name}`)
+}
+
+const filterByDeparture = () => {
+  ElMessage.info(`筛选 ${productInfo.value.departure} 出发的线路`)
+}
+
+const showRefundPolicy = () => {
+  ElMessage.info('出发前3天可全额退款，出发前1天扣除50%')
+}
+
+const showNotice = () => {
+  ElMessage.info('报名须知：请仔细阅读行程安排...')
+}
+
+const showPolicy = () => {
+  ElMessage.info('优惠政策：早鸟优惠、团体优惠...')
+}
+
+const startCustomTravel = () => {
+  ElMessage.info('定制旅行功能开发中')
+}
+
+// 监听视频源变化，重新加载视频
+watch(videoUrl, (newUrl, oldUrl) => {
+  if (newUrl && videoPlayer.value) {
+    videoPlayer.value.load()
   }
-}
-
-// 取消订单
-const cancelOrder = async () => {
-  loading.value = true
-  try {
-    await request.post(`/order/${createdOrder.value.id}/cancel`, {}, {
-      successMsg: '订单已取消',
-      onSuccess: () => {
-        payDialogVisible.value = false
-        router.push('/tickets')
-      }
-    })
-  } catch (error) {
-    console.error('取消订单失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-// 返回上一页
-const goBack = () => {
-  router.back()
-}
-
-// 格式化日期
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-// 二维码占位图（模拟支付二维码）
-const qrcodePlaceholder = computed(() => {
-  // 生成一个简单的二维码占位图URL
-  return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSI1MCIgeT0iNTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBzdHlsZT0iZmlsbDojZjBmMGYwO3N0cm9rZS13aWR0aDo0O3N0cm9rZTojZGRkIiAvPjxyZWN0IHg9IjcwIiB5PSI3MCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBzdHlsZT0iZmlsbDojZjhmOGY4O3N0cm9rZS13aWR0aDoyO3N0cm9rZTojY2NjIiAvPjx0ZXh0IHg9IjEwMCIgeT0iMTI3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBzdHlsZT0iZm9udC1mYW1pbHk6QXJpYWwsIHNhbnMtc2VyaWY7Zm9udC1zaXplOjEycHg7ZmlsbDojOTk5OTk5OyI+5pSv5LuY5LqM57u056CBPC90ZXh0Pjwvc3ZnPg=='
 })
 
-// 页面加载时获取门票详情
+// =============================================
+// 生命周期
+// =============================================
 onMounted(() => {
-  fetchTicketDetail()
+  nextTick(() => {
+    fetchProductDetail()
+  })
 })
 </script>
 
-<style lang="scss" scoped>
-.booking-container {
+<style scoped>
+/* 样式保持不变 */
+.travel-product-page {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  background: #f5f5f5;
   min-height: 100vh;
+}
+
+.main-content {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 20px;
+  gap: 30px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.left-section {
+  width: 540px;
+  flex-shrink: 0;
+}
+
+.right-section {
+  flex: 1;
+  min-width: 300px;
+}
+
+.booking-section-wrapper {
+  width: 100%;
+  margin: 0 -15px;
+}
+
+.main-image-container {
+  position: relative;
+  width: 530px;
+  height: 400px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  cursor: pointer;
+}
+
+.main-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 自定义播放按钮 - 居中显示 */
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.play-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.play-button svg {
+  margin-left: 4px;
+}
+
+.image-tags {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.image-tags .tag {
+  background: #f60;
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 2px;
+}
+
+.thumbnail-list {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-right: 10px;
+}
+
+.thumbnail-item {
+  position: relative;
+  width: 100px;
+  height: 60px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.thumbnail-item.active {
+  border-color: #f60;
+}
+
+.thumbnail-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-toggle {
+  margin-top: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 0;
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.toggle-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.toggle-btn:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.toggle-btn.active {
+  background: #f60;
+  color: #fff;
+  border-color: #f60;
+}
+
+.calendar-container {
+  width: 540px;
+  margin-top: 15px;
+}
+
+.list-container {
+  width: 540px;
+  margin-top: 15px;
+}
+
+.batch-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.batch-table th,
+.batch-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.batch-table th {
+  background: #fafafa;
+  font-weight: normal;
+  color: #666;
+}
+
+.batch-table .selected-row {
+  background: #fff8f5;
+}
+
+.list-price {
+  color: #f60;
+  font-weight: bold;
+}
+
+.list-price-note {
+  margin-top: 10px;
+  padding: 8px 12px;
   background: #f8fafc;
-  font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.status-tag.success {
+  background: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+.status-tag.warning {
+  background: #fffbe6;
+  color: #faad14;
+  border: 1px solid #ffe58f;
+}
+
+.select-btn {
+  padding: 4px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.select-btn.selected {
+  background: #f60;
+  color: #fff;
+  border-color: #f60;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.nav-btn {
+  background: none;
+  border: 1px solid #ddd;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.current-month {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.calendar-weekdays span {
+  font-size: 14px;
   color: #333;
+}
 
-  // 页面头部
-  .page-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 60px 0 40px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
+.calendar-weekdays span.weekend {
+  color: #f60;
+}
 
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="20" cy="60" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-      opacity: 0.3;
-    }
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
 
-    .header-content {
-      position: relative;
-      z-index: 1;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
+.calendar-day {
+  min-height: 70px;
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: default;
+  transition: all 0.2s ease;
+}
 
-    .page-title {
-      font-size: 36px;
-      font-weight: 700;
-      margin: 0 0 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
+.calendar-day.other-month {
+  color: #ccc;
+  cursor: not-allowed;
+}
 
-      .title-icon {
-        font-size: 32px;
-      }
-    }
+.calendar-day.has-trip {
+  background: #fff8f5;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
 
-    .page-subtitle {
-      font-size: 16px;
-      opacity: 0.9;
-      margin: 0;
-      max-width: 600px;
-      margin: 0 auto;
-    }
+.calendar-day.has-trip:hover {
+  background: #ffede0;
+  border-color: #f60;
+}
+
+.calendar-day.selected {
+  background: #f60 !important;
+  border-color: #f60;
+  border-radius: 6px;
+}
+
+.calendar-day.selected .day-number {
+  color: #fff !important;
+  font-weight: bold;
+}
+
+.calendar-day.selected .trip-status,
+.calendar-day.selected .trip-prices {
+  color: #fff !important;
+}
+
+.calendar-day.selected .trip-price {
+  color: #fff !important;
+}
+
+.day-number {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.trip-info {
+  margin-top: 4px;
+}
+
+.trip-status {
+  display: block;
+  font-size: 10px;
+  color: #f60;
+}
+
+.trip-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.trip-price {
+  display: block;
+  font-size: 10px;
+  color: #f60;
+  font-weight: bold;
+}
+
+.trip-price.adult {
+  color: #e94560;
+}
+
+.trip-price.child {
+  color: #ff8c42;
+}
+
+.booking-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 12px 15px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.booking-items {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.booking-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.booking-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-left: 12px;
+  border-left: 1px solid #eee;
+}
+
+.total-detail {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.total-unit {
+  color: #333;
+}
+
+.total-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.total-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.total-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #f60;
+}
+
+.booking-label {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.booking-select {
+  border: 1px solid #ddd;
+  padding: 6px 25px 6px 8px;
+  font-size: 13px;
+  border-radius: 4px;
+  min-width: 80px;
+  max-width: 160px;
+  appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-select:focus {
+  border-color: #f60;
+  outline: none;
+}
+
+.number-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.number-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.number-input input {
+  width: 30px;
+  text-align: center;
+  border: none;
+  font-size: 13px;
+  padding: 4px 0;
+  outline: none;
+}
+
+.num-btn {
+  background: #f5f5f5;
+  border: none;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.num-btn:hover {
+  background: #eee;
+}
+
+.person-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  margin-top: 2px;
+}
+
+.dropdown-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.dropdown-option:hover {
+  background: #fff8f5;
+}
+
+.dropdown-option.active {
+  background: #f60;
+  color: #fff;
+}
+
+.submit-btn {
+  background: #f60;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.submit-btn:hover {
+  background: #e55a00;
+}
+
+.product-header {
+  margin-bottom: 15px;
+}
+
+.product-title {
+  font-size: 22px;
+  color: #333;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+}
+
+.product-subtitle {
+  font-size: 14px;
+  color: #f60;
+  margin: 0;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #666;
+}
+
+.meta-right {
+  display: flex;
+  gap: 15px;
+}
+
+.enrolled strong {
+  color: #f60;
+}
+
+.action-link {
+  color: #999;
+  cursor: pointer;
+}
+
+.action-link:hover {
+  color: #f60;
+}
+
+.price-section {
+  padding: 20px 0;
+  border-bottom: 1px solid #eee;
+  background-color: #fef9f3;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.price-label {
+  font-size: 14px;
+  color: #666;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.price-info {
+  display: flex;
+  gap: 30px;
+}
+
+.price-main {
+  display: flex;
+  align-items: baseline;
+}
+
+.currency {
+  font-size: 16px;
+  color: #f60;
+}
+
+.price-value {
+  font-size: 36px;
+  color: #f60;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.price-unit {
+  font-size: 12px;
+  color: #999;
+  margin-left: 5px;
+}
+
+.price-note {
+  margin-top: 8px;
+  padding-left: 95px;
+  font-size: 12px;
+  color: #999;
+}
+
+.duration-tag {
+  background: #f60;
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.price-explain {
+  font-size: 12px;
+  color: #f60;
+  text-decoration: none;
+  margin-left: auto;
+}
+
+.vip-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, #fff8f0 0%, #fff 100%);
+  border: 1px solid #ffe0c0;
+  padding: 12px 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+
+.vip-text {
+  font-size: 14px;
+  color: #f60;
+}
+
+.vip-btn {
+  background: #f60;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 14px;
+}
+
+.info-row--feature {
+  background-color: #fef9f3;
+  padding: 12px 0;
+  border-radius: 4px;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.info-label {
+  width: 80px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.info-link {
+  color: #f60;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.info-text {
+  color: #333;
+  margin-right: 12px;
+}
+
+.feature-tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.feature-tag {
+  border: 1px solid #f60;
+  color: #f60;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.custom-travel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.custom-icon {
+  font-size: 18px;
+}
+
+.custom-brand {
+  font-weight: bold;
+  color: #333;
+}
+
+.custom-text {
+  color: #666;
+}
+
+.custom-link {
+  color: #f60;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.custom-actions {
+  margin-left: auto;
+}
+
+.custom-actions a {
+  color: #f60;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.custom-actions .divider {
+  color: #ddd;
+  margin: 0 10px;
+}
+
+.package-row {
+  display: flex;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.package-label {
+  width: 80px;
+  font-size: 14px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.package-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.package-btn {
+  border: 1px solid #f60;
+  color: #f60;
+  background: #fff;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.package-btn.active {
+  background: #fff5f0;
+}
+
+.package-name {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.package-prices {
+  display: flex;
+  gap: 12px;
+}
+
+.package-price {
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.package-price.adult {
+  color: #e94560;
+}
+
+.package-price.child {
+  color: #e94560;
+}
+
+.package-price-free {
+  font-size: 12px;
+  color: #52c41a;
+  font-weight: normal;
+}
+
+@media (max-width: 1024px) {
+  .booking-section {
+    padding: 10px 12px;
+    gap: 10px;
   }
-
-  // 加载状态
-  .loading-section {
-    padding: 40px 0;
-
-    .section-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
+  .booking-items {
+    gap: 8px;
   }
-
-  // 预订内容区域
-  .booking-content {
-    padding: 40px 0;
-
-    .section-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      align-items: start;
-    }
+  .booking-item {
+    gap: 4px;
   }
-
-  // 信息卡片通用样式
-  .info-card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    border: 1px solid #e2e8f0;
-    transition: all 0.3s ease;
-
-    &:hover {
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    }
-
-    .card-header {
-      padding: 24px 24px 0;
-      border-bottom: 1px solid #f1f5f9;
-      margin-bottom: 24px;
-
-      .card-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #2d3748;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        .el-icon {
-          color: #667eea;
-          font-size: 18px;
-        }
-      }
-    }
+  .booking-label {
+    font-size: 12px;
   }
-
-  // 门票信息卡片
-  .ticket-info-card {
-    .ticket-info {
-      padding: 0 24px 24px;
-    }
-
-    .ticket-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 20px;
-
-      .ticket-name {
-        font-size: 24px;
-        font-weight: 700;
-        color: #2d3748;
-        flex: 1;
-        line-height: 1.3;
-      }
-
-      .ticket-type-badge {
-        padding: 6px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 600;
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        color: white;
-        margin-left: 16px;
-        flex-shrink: 0;
-      }
-    }
-
-    .price-section {
-      margin-bottom: 24px;
-
-      .price-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        .discount-price {
-          font-size: 32px;
-          font-weight: 700;
-          color: #e53e3e;
-        }
-
-        .original-price {
-          font-size: 18px;
-          color: #94a3b8;
-          text-decoration: line-through;
-        }
-
-        .normal-price {
-          font-size: 32px;
-          font-weight: 700;
-          color: #2d3748;
-        }
-
-        .discount-badge {
-          padding: 4px 8px;
-          border-radius: 8px;
-          font-size: 10px;
-          font-weight: 600;
-          background: linear-gradient(45deg, #f56565, #e53e3e);
-          color: white;
-        }
-      }
-    }
-
-    .info-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
-      margin: 24px 0;
-    }
-
-    .ticket-details {
-      margin-bottom: 24px;
-
-      .detail-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid #f8fafc;
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        .detail-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          color: #64748b;
-          font-weight: 500;
-
-          .el-icon {
-            color: #667eea;
-          }
-        }
-
-        .detail-value {
-          font-size: 14px;
-          color: #2d3748;
-          font-weight: 600;
-
-          &.stock-value {
-            color: #059669;
-          }
-        }
-      }
-    }
-
-    .ticket-description {
-      .description-header {
-        font-size: 16px;
-        font-weight: 600;
-        color: #2d3748;
-        margin-bottom: 12px;
-      }
-
-      .description-content {
-        font-size: 14px;
-        color: #64748b;
-        line-height: 1.6;
-        background: #f8fafc;
-        padding: 16px;
-        border-radius: 8px;
-        border-left: 4px solid #667eea;
-      }
-    }
+  .booking-select {
+    font-size: 12px;
+    padding: 5px 20px 5px 6px;
+    min-width: 70px;
+    max-width: 120px;
   }
+}
 
-  // 预订表单卡片
-  .booking-form-card {
-    .booking-form {
-      padding: 0 24px 24px;
-
-      .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
-      }
-
-      .form-item {
-        &.full-width {
-          grid-column: 1 / -1;
-        }
-
-        :deep(.el-form-item__label) {
-          font-weight: 600;
-          color: #2d3748;
-          margin-bottom: 8px;
-          font-size: 14px;
-        }
-
-        .form-input {
-          :deep(.el-input__wrapper) {
-            border-radius: 8px;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
-            &:hover {
-              border-color: #667eea;
-            }
-
-            &.is-focus {
-              border-color: #667eea;
-              box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-            }
-          }
-
-          :deep(.el-date-editor) {
-            width: 100%;
-          }
-
-          :deep(.el-input-number) {
-            width: 100%;
-
-            .el-input__wrapper {
-              border-radius: 8px;
-              border: 2px solid #e2e8f0;
-              transition: all 0.3s ease;
-
-              &:hover {
-                border-color: #667eea;
-              }
-
-              &.is-focus {
-                border-color: #667eea;
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-              }
-            }
-          }
-        }
-
-        .form-tip {
-          font-size: 12px;
-          color: #94a3b8;
-          margin-top: 4px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-      }
-
-      .total-section {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 24px 0;
-        border: 2px solid #e2e8f0;
-
-        .total-amount {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-
-          .total-label {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2d3748;
-          }
-
-          .amount {
-            font-size: 28px;
-            font-weight: 700;
-            color: #e53e3e;
-          }
-        }
-      }
-
-      .form-actions {
-        display: flex;
-        gap: 16px;
-        justify-content: flex-end;
-        margin-top: 32px;
-
-        .back-btn {
-          border-radius: 12px;
-          border: 2px solid #e2e8f0;
-          color: #64748b;
-          background: white;
-          font-weight: 600;
-          padding: 12px 24px;
-          transition: all 0.3s ease;
-
-          &:hover {
-            border-color: #667eea;
-            color: #667eea;
-            background: #f8fafc;
-            transform: translateY(-1px);
-          }
-        }
-
-        .submit-btn {
-          background: linear-gradient(45deg, #667eea, #764ba2);
-          border: none;
-          border-radius: 12px;
-          font-weight: 600;
-          padding: 12px 32px;
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-          transition: all 0.3s ease;
-
-          &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-          }
-
-          &:disabled {
-            opacity: 0.6;
-            transform: none;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-          }
-        }
-      }
-    }
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
   }
-
-  // 支付对话框样式
-  :deep(.payment-dialog) {
-    .el-dialog__header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px 24px;
-      margin: 0;
-
-      .el-dialog__title {
-        color: white;
-        font-weight: 600;
-      }
-
-      .el-dialog__headerbtn {
-        .el-dialog__close {
-          color: white;
-          font-size: 18px;
-
-          &:hover {
-            color: rgba(255, 255, 255, 0.8);
-          }
-        }
-      }
-    }
-
-    .el-dialog__body {
-      padding: 24px;
-    }
-
-    .el-dialog__footer {
-      padding: 16px 24px 24px;
-      border-top: 1px solid #f1f5f9;
-    }
+  .left-section {
+    width: 100%;
   }
-
-  .pay-dialog-content {
-    .order-info {
-      margin-bottom: 24px;
-
-      .order-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 16px;
-        font-weight: 600;
-        color: #2d3748;
-        margin-bottom: 16px;
-
-        .el-icon {
-          color: #667eea;
-        }
-      }
-
-      .order-details {
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 16px;
-
-        .order-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 8px 0;
-          border-bottom: 1px solid #e2e8f0;
-
-          &:last-child {
-            border-bottom: none;
-          }
-
-          &.total-item {
-            margin-top: 8px;
-            padding-top: 16px;
-            border-top: 2px solid #e2e8f0;
-            border-bottom: none;
-
-            .order-label {
-              font-size: 16px;
-              font-weight: 600;
-            }
-
-            .amount {
-              font-size: 20px;
-              font-weight: 700;
-              color: #e53e3e;
-            }
-          }
-
-          .order-label {
-            font-size: 14px;
-            color: #64748b;
-          }
-
-          .order-value {
-            font-size: 14px;
-            color: #2d3748;
-            font-weight: 500;
-          }
-        }
-      }
-    }
-
-    .payment-methods {
-      margin-bottom: 24px;
-
-      .payment-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 16px;
-        font-weight: 600;
-        color: #2d3748;
-        margin-bottom: 16px;
-
-        .el-icon {
-          color: #667eea;
-        }
-      }
-
-      .payment-options {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-
-        :deep(.el-radio) {
-          margin: 0;
-          padding: 12px;
-          border: 2px solid #e2e8f0;
-          border-radius: 8px;
-          transition: all 0.3s ease;
-
-          &:hover {
-            border-color: #667eea;
-            background: #f8fafc;
-          }
-
-          &.is-checked {
-            border-color: #667eea;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-          }
-
-          .el-radio__input {
-            margin-right: 12px;
-          }
-        }
-
-        .payment-option {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 500;
-
-          .payment-icon {
-            font-size: 18px;
-
-            &.wechat-icon {
-              color: #07c160;
-            }
-
-            &.alipay-icon {
-              color: #1677ff;
-            }
-
-            &.bank-icon {
-              color: #667eea;
-            }
-          }
-        }
-      }
-    }
-
-    .payment-info {
-      text-align: center;
-
-      .payment-tip,
-      .qrcode-tip {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 14px;
-        color: #64748b;
-        margin-bottom: 16px;
-
-        .el-icon {
-          color: #667eea;
-        }
-      }
-
-      .qrcode-image {
-        display: flex;
-        justify-content: center;
-        padding: 20px;
-        background: #f8fafc;
-        border-radius: 8px;
-        border: 2px dashed #e2e8f0;
-      }
-    }
+  .main-image-container {
+    width: 100%;
   }
-
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .calendar-container {
+    width: 100%;
   }
-
-  // 响应式样式
-  @media (max-width: 1200px) {
-    .content-grid {
-      grid-template-columns: 1fr;
-      gap: 30px;
-    }
-
-    .page-header {
-      padding: 40px 0 30px;
-
-      .page-title {
-        font-size: 28px;
-      }
-    }
+  .list-container {
+    width: 100%;
+    overflow-x: auto;
   }
-
-  @media (max-width: 768px) {
-    .booking-content {
-      padding: 20px 0;
-
-      .section-container {
-        padding: 0 15px;
-      }
-    }
-
-    .page-header {
-      padding: 30px 0 20px;
-
-      .page-title {
-        font-size: 24px;
-      }
-
-      .page-subtitle {
-        font-size: 14px;
-      }
-    }
-
-    .booking-form {
-      .form-row {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      .form-actions {
-        flex-direction: column;
-
-        .back-btn,
-        .submit-btn {
-          width: 100%;
-        }
-      }
-    }
-
-    .pay-dialog-content {
-      .payment-options {
-        :deep(.el-radio) {
-          padding: 8px;
-        }
-      }
-    }
+  .booking-section {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .booking-total {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin-top: 5px;
+  }
+  .submit-btn {
+    width: 100%;
+    margin-top: 10px;
+  }
+  .price-note {
+    padding-left: 0;
   }
 }
 </style>

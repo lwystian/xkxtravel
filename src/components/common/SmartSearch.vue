@@ -401,7 +401,7 @@ defineExpose({
   font-size: 14px;
   font-weight: 600;
   color: #64748b;
-  background: #f8fafc;
+  background: #FFFFFF;
   
   .el-icon {
     margin-right: 6px;
@@ -418,7 +418,7 @@ defineExpose({
   
   &:hover,
   &.active {
-    background: #f8fafc;
+    background: #FFFFFF;
   }
   
   .item-image {

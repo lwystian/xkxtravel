@@ -266,7 +266,7 @@ onMounted(fetchGuide)
 <style lang="scss" scoped>
 .guide-detail-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
 }
 
@@ -499,7 +499,7 @@ onMounted(fetchGuide)
   .sidebar-sticky {
     position: sticky;
     top: 100px;
-    background: #f8fafc;
+    background: #FFFFFF;
     border-radius: 12px;
     padding: 24px;
     border: 1px solid #e2e8f0;
@@ -640,7 +640,7 @@ onMounted(fetchGuide)
     border-left: 4px solid #667eea;
     padding: 16px 20px;
     margin: 24px 0;
-    background: #f8fafc;
+    background: #FFFFFF;
     border-radius: 0 8px 8px 0;
     font-style: italic;
     color: #4a5568;
@@ -713,13 +713,13 @@ onMounted(fetchGuide)
     }
 
     th {
-      background: #f8fafc;
+      background: #FFFFFF;
       font-weight: 600;
       color: #2d3748;
     }
 
     tr:hover {
-      background: #f8fafc;
+      background: #FFFFFF;
     }
 
     tr:last-child td {
@@ -841,7 +841,7 @@ onMounted(fetchGuide)
     padding: 16px 20px;
     color: #4a5568;
     margin: 1.5em 0;
-    background: #f8fafc;
+    background: #FFFFFF;
     border-radius: 0 8px 8px 0;
     font-style: italic;
   }
@@ -888,13 +888,13 @@ onMounted(fetchGuide)
     }
 
     th {
-      background: #f8fafc;
+      background: #FFFFFF;
       font-weight: 600;
       color: #2d3748;
     }
 
     tr:hover {
-      background: #f8fafc;
+      background: #FFFFFF;
     }
   }
 }

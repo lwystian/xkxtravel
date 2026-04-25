@@ -137,7 +137,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f5f5f5;
+  background: #FFFFFF;
   font-family: Arial, sans-serif;
 }
 
@@ -224,7 +224,7 @@ onMounted(() => {
 }
 
 .btn-secondary {
-  background: #f5f5f5;
+  background: #FFFFFF;
   color: #666;
 }
 

@@ -357,7 +357,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .accommodation-frontend-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
   color: #333;
 
@@ -370,7 +370,7 @@ onMounted(() => {
 
   // 搜索筛选区域
   .search-filter-section {
-    background: white;
+    background: #F9F9F9;
     padding: 0;
   }
 
@@ -544,7 +544,7 @@ onMounted(() => {
 
   // 住宿列表区域
   .accommodation-list-section {
-    background: #f8fafc;
+    background: #F9F9F9;
     min-height: 60vh;
   }
 

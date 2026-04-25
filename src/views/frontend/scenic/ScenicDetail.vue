@@ -713,7 +713,7 @@ onMounted(fetchDetail)
 <style lang="scss" scoped>
 .scenic-detail-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
 }
 
@@ -976,7 +976,7 @@ onMounted(fetchDetail)
     display: flex;
     justify-content: space-between;
     padding: 8px 12px;
-    background: #f8fafc;
+    background: #FFFFFF;
     border-radius: 8px;
 
     .label {
@@ -1122,7 +1122,7 @@ onMounted(fetchDetail)
 }
 
 .forecast-item {
-  background: #f8fafc;
+  background: #FFFFFF;
   border-radius: 8px;
   padding: 12px;
   text-align: center;
@@ -1174,7 +1174,7 @@ onMounted(fetchDetail)
 
 // 地图区域
 .map-section {
-  background: #f8fafc;
+  background: #FFFFFF;
   padding: 40px 0;
 }
 
@@ -1369,7 +1369,7 @@ onMounted(fetchDetail)
 
 // 评论区域
 .comment-section {
-  background: #f8fafc;
+  background: #FFFFFF;
   padding: 40px 0;
 }
 

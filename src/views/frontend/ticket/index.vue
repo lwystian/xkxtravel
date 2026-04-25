@@ -967,7 +967,7 @@ onMounted(async () => {
 <style scoped>
 .tickets-page {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  background: #f5f5f5;
+  background: #FFFFFF;
   min-height: 100vh;
 }
 
@@ -1038,7 +1038,7 @@ onMounted(async () => {
   padding: 6px 16px;
   font-size: 13px;
   color: #666;
-  background: #f5f5f5;
+  background: #FFFFFF;
   border-radius: 24px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1158,7 +1158,7 @@ onMounted(async () => {
   padding: 6px 16px;
   font-size: 13px;
   color: #666;
-  background: #f5f5f5;
+  background: #FFFFFF;
   border-radius: 24px;
   cursor: pointer;
   transition: all 0.2s ease;

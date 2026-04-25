@@ -532,7 +532,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .profile-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
   color: #333;
 
@@ -606,7 +606,7 @@ onMounted(() => {
   .modern-tabs {
     :deep(.el-tabs__header) {
       margin: 0;
-      background: #f8fafc;
+      background: #FFFFFF;
       border-bottom: 1px solid #e2e8f0;
     }
 
@@ -839,7 +839,7 @@ onMounted(() => {
     .password-header {
       text-align: center;
       padding: 40px 24px 24px;
-      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      background: linear-gradient(135deg, #FFFFFF 0%, #e2e8f0 100%);
 
       .security-icon {
         font-size: 48px;

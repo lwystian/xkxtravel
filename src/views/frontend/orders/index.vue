@@ -547,7 +547,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .orders-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
   color: #333;
 
@@ -622,7 +622,7 @@ onMounted(() => {
   .modern-tabs {
     :deep(.el-tabs__header) {
       margin: 0;
-      background: #f8fafc;
+      background: #FFFFFF;
       border-bottom: 1px solid #e2e8f0;
     }
 
@@ -735,7 +735,7 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
     padding: 20px 24px;
-    background: #f8fafc;
+    background: #FFFFFF;
     border-bottom: 1px solid #e2e8f0;
 
     .order-info {
@@ -882,7 +882,7 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: #f8fafc;
+    background: #FFFFFF;
     border-top: 1px solid #e2e8f0;
 
     .payment-info {
@@ -936,7 +936,7 @@ onMounted(() => {
           &:hover {
             border-color: #667eea;
             color: #667eea;
-            background: #f8fafc;
+            background: #FFFFFF;
           }
         }
       }

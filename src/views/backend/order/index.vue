@@ -482,7 +482,7 @@ onMounted(() => {
         &:hover, &:focus {
           color: #34495e;
           border-color: #95a5a6;
-          background-color: #f5f5f5;
+          background-color: #FFFFFF;
         }
       }
     }

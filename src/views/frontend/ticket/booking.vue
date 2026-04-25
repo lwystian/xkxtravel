@@ -1043,7 +1043,7 @@ onMounted(() => {
 /* 样式保持不变 */
 .travel-product-page {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  background: #f5f5f5;
+  background: #FFFFFF;
   min-height: 100vh;
 }
 
@@ -1246,7 +1246,7 @@ onMounted(() => {
 .list-price-note {
   margin-top: 10px;
   padding: 8px 12px;
-  background: #f8fafc;
+  background: #FFFFFF;
   border-radius: 4px;
   font-size: 12px;
   color: #666;
@@ -1526,7 +1526,7 @@ onMounted(() => {
 }
 
 .num-btn {
-  background: #f5f5f5;
+  background: #FFFFFF;
   border: none;
   padding: 4px 10px;
   cursor: pointer;
@@ -1733,7 +1733,7 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   padding: 12px 0;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid #FFFFFF;
   font-size: 14px;
 }
 
@@ -1824,7 +1824,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 15px 0;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid #FFFFFF;
 }
 
 .package-label {

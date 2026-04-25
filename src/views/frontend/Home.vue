@@ -312,12 +312,12 @@ onMounted(() => {
 .quick-nav-section,
 .featured-section,
 .inspiration-section {
-  background: white;
+  background: #F9F9F9;
   margin: 0;
   position: relative;
 
   &:nth-child(even) {
-    background: #f8fafc;
+    background: #F9F9F9;
   }
 }
 

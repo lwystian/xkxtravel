@@ -769,7 +769,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background-color: #FFFFFF;
 }
 
 // ==================== 三层页眉样式 ====================
@@ -810,7 +810,7 @@ onMounted(() => {
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 16px;
-  background-color: #f5f5f5;
+  background-color: #FFFFFF;
   transition: all 0.3s;
   margin-right: 15px;
   white-space: nowrap;
@@ -1033,7 +1033,7 @@ onMounted(() => {
     align-items: center;
     padding: 0 12px;
     height: 48px;
-    background: #f5f5f5;
+    background: #FFFFFF;
     border: 2px solid #e94560;
     border-right: none;
     border-radius: 24px 0 0 24px;
@@ -1158,7 +1158,7 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: #64748b;
-  background: #f8fafc;
+  background: #FFFFFF;
 
   .el-icon {
     margin-right: 6px;
@@ -1175,7 +1175,7 @@ onMounted(() => {
 
   &:hover,
   &.active {
-    background: #f8fafc;
+    background: #FFFFFF;
   }
 
   .item-image {

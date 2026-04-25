@@ -557,7 +557,7 @@ watch(() => accommodation.value, (newVal) => {
 <style lang="scss" scoped>
 .accommodation-detail-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
   color: #333;
 
@@ -746,7 +746,7 @@ watch(() => accommodation.value, (newVal) => {
 
   // 详细信息区域 - 参考景点详情页面
   .detail-content {
-    background: #f8fafc;
+    background: #FFFFFF;
     padding: 60px 0;
   }
 

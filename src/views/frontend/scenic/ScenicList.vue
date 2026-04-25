@@ -445,7 +445,7 @@ const fetchBatchCommentStats = async () => {
 <style lang="scss" scoped>
 .scenic-frontend-container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #FFFFFF;
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
   color: #333;
   
@@ -458,7 +458,7 @@ const fetchBatchCommentStats = async () => {
 
 // 搜索筛选区域
 .search-filter-section {
-  background: white;
+  background: #F9F9F9;
   padding: 0;
 }
 
@@ -587,7 +587,7 @@ const fetchBatchCommentStats = async () => {
     &:hover {
       border-color: #667eea;
       color: #667eea;
-      background: #f8fafc;
+      background: #FFFFFF;
     }
   }
 }
@@ -660,7 +660,7 @@ const fetchBatchCommentStats = async () => {
 
 // 景点列表区域
 .scenic-list-section {
-  background: white;
+  background: #F9F9F9;
   margin: 0;
   padding-top: 20px;
 }

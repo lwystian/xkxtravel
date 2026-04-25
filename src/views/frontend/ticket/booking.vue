@@ -839,11 +839,11 @@ const fetchProductDetail = async () => {
     
     batchDates.value = [
       { date: '2026-05-05', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 28 },
-      { date: '2026-05-10', adultDateExtraFee: 20, childDateExtraFee: 10, status: '可报名', remaining: 15 },
+      { date: '2026-05-10', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 15 },
       { date: '2026-05-12', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 30 },
-      { date: '2026-05-17', adultDateExtraFee: 20, childDateExtraFee: 10, status: '可报名', remaining: 22 },
+      { date: '2026-05-17', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 22 },
       { date: '2026-05-21', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 30 },
-      { date: '2026-06-01', adultDateExtraFee: 50, childDateExtraFee: 25, status: '可报名', remaining: 45 }
+      { date: '2026-06-01', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 45 }
     ]
 
     // 设置日历默认月份为最早有行程的月份

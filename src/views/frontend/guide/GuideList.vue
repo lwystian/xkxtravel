@@ -4,20 +4,22 @@
     <div class="banner">
       <img
         class="banner-img"
-        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-YgYwqrTunODD8PXwsZpzqeEat1K9rF.png"
+        src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&h=600&fit=crop"
         alt="banner"
       />
       <div class="banner-mask">
-        <h1 class="banner-title">探索旅行者分享的精彩旅游体验和实用建议</h1>
-        <div class="search-bar">
-          <input
-            v-model="searchForm.title"
-            type="text"
-            class="search-input"
-            placeholder="游记/旅行攻略/目的地"
-            @keyup.enter="handleSearch"
-          />
-          <button class="search-btn" @click="handleSearch">搜索</button>
+        <div class="banner-content">
+          <h1 class="banner-title">探索旅行者分享的精彩旅游体验和实用建议</h1>
+          <div class="search-bar">
+            <input
+              v-model="searchForm.title"
+              type="text"
+              class="search-input"
+              placeholder="游记/旅行攻略/目的地"
+              @keyup.enter="handleSearch"
+            />
+            <button class="search-btn" @click="handleSearch">搜索</button>
+          </div>
         </div>
       </div>
     </div>
@@ -109,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { formatDate } from '@/utils/dateUtils'
@@ -203,6 +205,9 @@ const fetchGuides = async () => {
 const handleSearch = () => {
   currentPage.value = 1
   fetchGuides()
+  nextTick(() => {
+    document.querySelector('.content')?.scrollIntoView({ behavior: 'smooth' })
+  })
 }
 
 // Tab切换
@@ -300,54 +305,61 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 60px 12% 80px;
-  box-sizing: border-box;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.4) 100%);
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-content {
+  text-align: center;
+  padding: 0 20px;
+  max-width: 800px;
+  width: 100%;
 }
 
 .banner-title {
-  font-size: 32px;
+  font-size: 36px;
   color: #fff;
-  font-weight: 600;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  margin: 0;
-  max-width: 60%;
+  font-weight: 700;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  margin: 0 0 30px;
+  line-height: 1.3;
 }
 
 .search-bar {
   display: flex;
-  align-self: flex-end;
-  width: 60%;
-  max-width: 720px;
-  height: 50px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  height: 56px;
   background: #fff;
-  border-radius: 2px;
+  border-radius: 28px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .search-input {
   flex: 1;
   border: none;
   outline: none;
-  padding: 0 20px;
-  font-size: 14px;
+  padding: 0 24px;
+  font-size: 16px;
   color: #333;
 }
 
 .search-input::placeholder {
   color: #bbb;
+  font-size: 14px;
 }
 
 .search-btn {
-  width: 120px;
+  width: 100px;
   border: none;
   background: #f90;
   color: #fff;
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -371,6 +383,7 @@ onMounted(() => {
   background: #fff;
   padding: 0 30px;
   border-bottom: 1px solid #eee;
+  border-radius: 8px 8px 0 0;
 }
 
 .tabs {
@@ -435,6 +448,7 @@ onMounted(() => {
   background: #fff;
   padding: 0 30px;
   min-height: 400px;
+  border-radius: 0 0 8px 8px;
 }
 
 .article-item {
@@ -459,7 +473,7 @@ onMounted(() => {
   width: 240px;
   height: 160px;
   flex-shrink: 0;
-  border-radius: 4px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -478,7 +492,7 @@ onMounted(() => {
   color: #e63;
   font-size: 12px;
   padding: 2px 8px;
-  border-radius: 2px;
+  border-radius: 4px;
   font-weight: 600;
 }
 
@@ -615,6 +629,7 @@ onMounted(() => {
   padding: 20px 30px;
   display: flex;
   justify-content: center;
+  border-radius: 0 0 8px 8px;
 }
 
 .modern-pagination {
@@ -683,17 +698,23 @@ onMounted(() => {
   }
   
   .banner-title {
-    font-size: 20px;
-    max-width: 100%;
+    font-size: 22px;
+    margin-bottom: 20px;
   }
   
   .search-bar {
-    width: 100%;
-    align-self: center;
+    height: 48px;
+    border-radius: 24px;
   }
   
-  .banner-mask {
-    padding: 30px 20px 40px;
+  .search-input {
+    padding: 0 18px;
+    font-size: 14px;
+  }
+  
+  .search-btn {
+    width: 80px;
+    font-size: 14px;
   }
   
   .tab-bar {

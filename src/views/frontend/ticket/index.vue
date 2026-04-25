@@ -318,7 +318,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Loading, Close } from '@element-plus/icons-vue'
@@ -671,6 +671,11 @@ const performSearch = () => {
     hasSearched.value = true
     currentPage.value = 1
     loading.value = false
+    
+    // 搜索后页面往下滑动一小段距离
+    setTimeout(() => {
+      document.documentElement.scrollTop = 220
+    }, 500)
   }, 200)
 }
 

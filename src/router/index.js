@@ -80,6 +80,12 @@ export const backendRoutes = [
         name: 'CarouselManagement',
         component: () => import('@/views/backend/carousel/index.vue'),
         meta: { title: '轮播图管理', icon: 'Picture' }
+      },
+      {
+        path: 'tag',
+        name: 'TagManagement',
+        component: () => import('@/views/backend/tag/TagList.vue'),
+        meta: { title: '标签管理', icon: 'PriceTag' }
       }
     ]
   }

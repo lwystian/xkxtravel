@@ -97,10 +97,6 @@
             <!-- 左侧图片区域 - 固定宽高 -->
             <div class="card-image-horizontal">
               <img :src="getImageUrl(item.imageUrl)" :alt="item.name" />
-              <div class="image-tags">
-                <span v-if="item.price === 0" class="tag free-tag">免费</span>
-                <span v-else class="tag price-tag">¥{{ item.price || '99' }}起</span>
-              </div>
               <div class="rating-badge-horizontal">
                 <el-icon><Star /></el-icon>
                 <span>{{ getDisplayRating(item.rating) }}</span>
@@ -122,9 +118,15 @@
               <p class="description">{{ truncateText(item.description, 100) }}</p>
               
               <div class="feature-tags">
-                <span class="feature-tag">🏛️ 文化古迹</span>
-                <span class="feature-tag">📸 拍照圣地</span>
-                <span class="feature-tag">🎫 快速出票</span>
+                <span
+                  v-for="tag in (item.tags || [])"
+                  :key="tag.id"
+                  class="feature-tag"
+                  :style="getTagStyle(tag)"
+                >
+                  {{ tag.name }}
+                </span>
+                <span v-if="!item.tags || item.tags.length === 0" class="no-tags">暂无标签</span>
               </div>
               
               <div class="card-footer-horizontal">
@@ -200,8 +202,7 @@ const searchForm = reactive({
 const currentSort = ref('recommend')
 const sortOptions = [
   { label: '推荐排序', value: 'recommend' },
-  { label: '评分最高', value: 'rating' },
-  { label: '价格最低', value: 'price_asc' }
+  { label: '评分最高', value: 'rating' }
 ]
 
 // 滚动到内容区域
@@ -245,9 +246,6 @@ const fetchScenicSpots = async () => {
     if (currentSort.value === 'rating') {
       params.orderBy = 'rating'
       params.order = 'desc'
-    } else if (currentSort.value === 'price_asc') {
-      params.orderBy = 'price'
-      params.order = 'asc'
     }
 
     await request.get('/scenic/page', params, {
@@ -346,6 +344,26 @@ const formatReviewCount = (count) => {
 const getDisplayRating = (rating) => {
   if (!rating) return '4.5'
   return parseFloat(rating).toFixed(1)
+}
+
+// 获取标签样式
+const getTagStyle = (tag) => {
+  const color = tag.color || '#FF6B35'
+  const bgAlpha = 0.1
+  return {
+    backgroundColor: hexToRgba(color, bgAlpha),
+    color: color,
+    borderColor: hexToRgba(color, 0.3)
+  }
+}
+
+// HEX转RGBA
+const hexToRgba = (hex, alpha) => {
+  if (!hex) return `rgba(255, 107, 53, ${alpha})`
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 // 生命周期
@@ -834,12 +852,40 @@ $border: #e9ecef;
 }
 
 .feature-tag {
-  padding: 4px 12px;
-  background: $bg-light;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
   border-radius: 20px;
-  font-size: 11px;
-  color: $primary;
-  border: 1px solid $border;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: currentColor;
+    opacity: 0.8;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.no-tags {
+  padding: 5px 14px;
+  background: #f5f5f5;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #999;
 }
 
 .card-footer-horizontal {

@@ -87,11 +87,6 @@
             <el-tag v-else size="small" type="info" effect="plain">未分类</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="price" label="票价" width="100" align="center">
-          <template #default="scope">
-            <span class="price-tag">¥ {{ scope.row.price }}</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="openingHours" label="开放时间" width="150" align="center">
           <template #default="scope">
             <span class="time-tag">
@@ -204,13 +199,6 @@
             ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="票价" prop="price">
-          <el-input v-model="scenicForm.price" type="number" placeholder="请输入票价">
-            <template #prefix>
-              <span class="price-prefix">¥</span>
-            </template>
-          </el-input>
-        </el-form-item>
         <el-form-item label="开放时间" prop="openingHours">
           <el-input v-model="scenicForm.openingHours" placeholder="请输入开放时间">
             <template #prefix>
@@ -265,6 +253,29 @@
               <el-button size="small" type="danger" @click="removeImage">删除图片</el-button>
             </div>
           </div>
+        </el-form-item>
+        <el-form-item label="标签" prop="tagIds">
+          <el-select
+            v-model="scenicForm.tagIds"
+            multiple
+            placeholder="请选择标签"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in tagOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+              :style="{ color: item.color }"
+            >
+              <span :style="{ color: item.color }">
+                <el-tag size="small" :style="{ backgroundColor: item.color + '20', borderColor: item.color, color: item.color }">
+                  {{ item.name }}
+                </el-tag>
+              </span>
+            </el-option>
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -392,6 +403,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const categoryOptions = ref([])
+const tagOptions = ref([])
 
 // 格式化地区数据为级联选择器格式
 const formatRegionData = () => {
@@ -431,19 +443,16 @@ const scenicForm = reactive({
   location: '',
   regionValue: [],
   categoryId: null,
-  price: '',
   openingHours: '',
   imageUrl: '',
   longitude: '',
-  latitude: ''
+  latitude: '',
+  tagIds: []
 })
 
 const scenicFormRules = {
   name: [
     { required: true, message: '请输入景点名称', trigger: 'blur' }
-  ],
-  price: [
-    { required: true, message: '请输入票价', trigger: 'blur' }
   ],
   categoryId: [
     { required: true, message: '请选择分类', trigger: 'change' }
@@ -466,6 +475,7 @@ const tempCoordinates = reactive({
 
 onMounted(() => {
   fetchCategories()
+  fetchTags()
   fetchScenicSpots()
   loadAmapScript().catch(err => {
     console.error('加载高德地图API失败:', err)
@@ -527,6 +537,12 @@ const handleEdit = (row) => {
     }
   })
   scenicForm.regionValue = parseLocationToRegionValue(row.location)
+  // 加载景点已有的标签
+  if (row.tags && row.tags.length > 0) {
+    scenicForm.tagIds = row.tags.map(tag => tag.id)
+  } else {
+    scenicForm.tagIds = []
+  }
   dialogVisible.value = true
 }
 
@@ -552,17 +568,29 @@ const submitForm = () => {
     if (valid) {
       submitLoading.value = true
       try {
-        // 创建一个新对象，不包含regionValue字段
+        // 创建一个新对象，不包含regionValue和tagIds字段
         const formData = { ...scenicForm }
         delete formData.regionValue
-        
+        const tagIds = formData.tagIds // 保存标签ID
+        delete formData.tagIds
+
         if (dialogType.value === 'add') {
-          await request.post('/scenic/add', formData, {
+          const spotRes = await request.post('/scenic/add', formData, {
             successMsg: '添加景点成功'
           })
+          // 新增景点后，保存标签
+          if (spotRes && spotRes.id && tagIds && tagIds.length > 0) {
+            await request.put(`/scenic/${spotRes.id}/tags`, tagIds, {
+              showDefaultMsg: false
+            })
+          }
         } else {
           await request.put(`/scenic/${formData.id}`, formData, {
             successMsg: '更新景点成功'
+          })
+          // 更新景点后，保存标签
+          await request.put(`/scenic/${formData.id}/tags`, tagIds, {
+            showDefaultMsg: false
           })
         }
         dialogVisible.value = false
@@ -581,8 +609,8 @@ const resetForm = () => {
     scenicFormRef.value.resetFields()
   }
   Object.keys(scenicForm).forEach(key => {
-    if (key === 'id' || key === 'categoryId') {
-      scenicForm[key] = null
+    if (key === 'id' || key === 'categoryId' || key === 'tagIds') {
+      scenicForm[key] = key === 'tagIds' ? [] : null
     } else if (key === 'regionValue') {
       scenicForm[key] = []
     } else {
@@ -645,6 +673,21 @@ const fetchCategories = async () => {
   } catch (error) {
     console.error('获取分类列表失败:', error)
     categoryOptions.value = []
+  }
+}
+
+// 获取标签列表
+const fetchTags = async () => {
+  try {
+    await request.get('/scenic-tag/all', {}, {
+      showDefaultMsg: false,
+      onSuccess: (res) => {
+        tagOptions.value = res || []
+      }
+    })
+  } catch (error) {
+    console.error('获取标签列表失败:', error)
+    tagOptions.value = []
   }
 }
 
@@ -1171,11 +1214,6 @@ const updateMapFromInput = () => {
         border-color: #3498db;
       }
       
-      .price-tag {
-        color: #e74c3c;
-        font-weight: 500;
-      }
-      
       .time-tag {
         color: #7f8c8d;
       }
@@ -1306,11 +1344,6 @@ const updateMapFromInput = () => {
           display: flex;
           gap: 10px;
         }
-      }
-      
-      .price-prefix {
-        color: #e74c3c;
-        font-weight: bold;
       }
     }
   }

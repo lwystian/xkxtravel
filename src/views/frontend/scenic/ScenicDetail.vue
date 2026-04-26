@@ -148,16 +148,6 @@
               <div class="info-list">
                 <div class="info-item">
                   <div class="info-label">
-                    <el-icon><Money /></el-icon>
-                    行程价格
-                  </div>
-                  <div class="info-value price-value">
-                    <span v-if="scenic.price === 0" class="free-tag">免费</span>
-                    <span v-else class="price">¥{{ scenic.price }}</span>
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">
                     <el-icon><Timer /></el-icon>
                     开放时间
                   </div>
@@ -287,7 +277,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import axios from 'axios'
 import {
-  Location, CollectionTag, Money, Timer, Sunny, Loading, Star, StarFilled,
+  Location, CollectionTag, Timer, Sunny, Loading, Star, StarFilled,
   Document, InfoFilled, CopyDocument, Share, Ticket, Tickets, ChatDotRound
 } from '@element-plus/icons-vue'
 

@@ -28,7 +28,12 @@
           <el-icon><Location /></el-icon>
           <template #title>景点管理</template>
         </el-menu-item>
-        
+
+        <el-menu-item index="/back/tag" v-if="userStore.isAdmin">
+          <el-icon><PriceTag /></el-icon>
+          <span>景点标签管理</span>
+        </el-menu-item>
+
         <el-menu-item index="/back/category">
           <el-icon><Menu /></el-icon>
           <template #title>分类管理</template>
@@ -68,7 +73,7 @@
           <el-icon><Picture /></el-icon>
           <span>轮播图管理</span>
         </el-menu-item>
-        
+
       </el-menu>
     </div>
   </div>
@@ -91,7 +96,8 @@ import {
   Ticket,
   List,
   House,
-  Picture
+  Picture,
+  PriceTag
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

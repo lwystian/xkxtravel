@@ -10,7 +10,7 @@
           我的订单
         </h1>
         <p class="page-subtitle">
-          查看和管理您的门票订单
+          查看和管理您的行程订单
         </p>
       </div>
     </div>
@@ -90,10 +90,10 @@
           <div v-else-if="orderList.length === 0" class="empty-state">
             <div class="empty-icon">📋</div>
             <h3 class="empty-title">暂无订单</h3>
-            <p class="empty-desc">您还没有任何订单，快去预订门票吧</p>
+            <p class="empty-desc">您还没有任何订单，快去预订行程吧</p>
             <el-button type="primary" @click="goToTicketList" class="empty-action">
               <el-icon><Ticket /></el-icon>
-              浏览门票
+              浏览行程
             </el-button>
           </div>
 
@@ -225,7 +225,7 @@
       <div class="pay-dialog-content" v-if="currentOrder">
         <div class="order-info">
           <p><strong>订单号:</strong> {{ currentOrder.orderNo }}</p>
-          <p><strong>门票名称:</strong> {{ currentOrder.ticketName }}</p>
+          <p><strong>行程名称:</strong> {{ currentOrder.ticketName }}</p>
           <p><strong>游玩日期:</strong> {{ formatDate(currentOrder.visitDate) }}</p>
           <p><strong>数量:</strong> {{ currentOrder.quantity }}</p>
           <p><strong>总金额:</strong> <span class="amount">¥{{ currentOrder.totalAmount }}</span></p>
@@ -262,7 +262,7 @@
       <div class="order-detail" v-if="currentOrder">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="订单号">{{ currentOrder.orderNo }}</el-descriptions-item>
-          <el-descriptions-item label="门票名称">{{ currentOrder.ticketName }}</el-descriptions-item>
+          <el-descriptions-item label="行程名称">{{ currentOrder.ticketName }}</el-descriptions-item>
           <el-descriptions-item label="景点名称">{{ currentOrder.scenicName }}</el-descriptions-item>
           <el-descriptions-item label="游玩日期">{{ formatDate(currentOrder.visitDate) }}</el-descriptions-item>
           <el-descriptions-item label="购买数量">{{ currentOrder.quantity }}</el-descriptions-item>
@@ -358,7 +358,7 @@ const getStatusClass = (status) => {
   return statusMap[status] || 'default'
 }
 
-// 跳转到门票列表
+// 跳转到行程列表
 const goToTicketList = () => {
   router.push('/ticket')
 }

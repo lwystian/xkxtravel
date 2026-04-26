@@ -61,7 +61,7 @@ export const backendRoutes = [
         path: 'ticket',
         name: 'TicketManagement',
         component: () => import('@/views/backend/ticket/index.vue'),
-        meta: { title: '门票管理', icon: 'Ticket' }
+        meta: { title: '行程管理', icon: 'Ticket' }
       },
       {
         path: 'order',
@@ -125,7 +125,7 @@ const frontendRoutes = [
         path: 'ticket/booking/:id',
         name: 'TicketBooking',
         component: () => import('@/views/frontend/ticket/booking.vue'),
-        meta: { title: '预订门票', requiresAuth: true }
+        meta: { title: '预订行程', requiresAuth: true }
       },
       {
         path: 'orders',

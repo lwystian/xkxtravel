@@ -47,7 +47,7 @@
         class="order-table"
       >
         <el-table-column prop="orderNo" label="订单号" width="180" />
-        <el-table-column prop="ticketName" label="门票名称" min-width="150" />
+        <el-table-column prop="ticketName" label="行程名称" min-width="150" />
         <el-table-column prop="visitorName" label="游客姓名" width="100" />
         <el-table-column prop="visitorPhone" label="联系电话" width="120" />
         <el-table-column prop="visitDate" label="游玩日期" width="100">
@@ -137,7 +137,7 @@
       <div class="order-detail" v-if="currentOrder">
         <el-descriptions title="订单信息" :column="1" border>
           <el-descriptions-item label="订单号">{{ currentOrder.orderNo }}</el-descriptions-item>
-          <el-descriptions-item label="门票名称">{{ currentOrder.ticketName }}</el-descriptions-item>
+          <el-descriptions-item label="行程名称">{{ currentOrder.ticketName }}</el-descriptions-item>
           <el-descriptions-item label="景点名称">{{ currentOrder.scenicName }}</el-descriptions-item>
           <el-descriptions-item label="游玩日期">{{ formatDate(currentOrder.visitDate) }}</el-descriptions-item>
           <el-descriptions-item label="购买数量">{{ currentOrder.quantity }}</el-descriptions-item>

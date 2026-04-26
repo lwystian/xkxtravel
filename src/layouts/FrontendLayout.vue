@@ -493,7 +493,7 @@ const fetchSearchSuggestions = async (keyword) => {
       searchSuggestions.scenics = Array.isArray(scenicResponse) ? scenicResponse : (scenicResponse?.data || [])
       searchSuggestions.guides = Array.isArray(guideResponse) ? guideResponse : (guideResponse?.data || [])
 
-      // 单独获取线路建议（使用门票接口）
+      // 单独获取线路建议（使用行程接口）
       await request.get('/ticket/page', {
         ticketName: keyword,
         currentPage: 1,
@@ -525,7 +525,7 @@ const fetchSearchSuggestions = async (keyword) => {
 
       searchSuggestions.guides = Array.isArray(response) ? response : (response?.data || [])
     } else if (category === 'line') {
-      // 只获取线路建议（使用门票接口）
+      // 只获取线路建议（使用行程接口）
       await request.get('/ticket/page', {
         ticketName: keyword,
         currentPage: 1,
@@ -643,7 +643,7 @@ const goToGuideDetail = (id) => {
   hideSearchSuggestions()
 }
 
-// 跳转到门票详情
+// 跳转到行程详情
 const goToTicketDetail = (id) => {
   router.push(`/ticket/booking/${id}`)
   hideSearchSuggestions()

@@ -149,7 +149,7 @@
                 <div class="info-item">
                   <div class="info-label">
                     <el-icon><Money /></el-icon>
-                    门票价格
+                    行程价格
                   </div>
                   <div class="info-value price-value">
                     <span v-if="scenic.price === 0" class="free-tag">免费</span>
@@ -205,7 +205,7 @@
         <div v-loading="ticketLoading" class="ticket-content">
           <div v-if="tickets.length === 0" class="empty-state">
             <div class="empty-icon">🎫</div>
-            <h3 class="empty-title">暂无可预订门票</h3>
+            <h3 class="empty-title">暂无可预订行程</h3>
             <p class="empty-desc">该景点暂时没有开放在线预订服务</p>
           </div>
           <div v-else class="ticket-grid">
@@ -664,7 +664,7 @@ const fetchTickets = async (scenicId) => {
       }
     })
   } catch (error) {
-    console.error('获取景点门票失败:', error)
+    console.error('获取景点行程失败:', error)
   } finally {
     ticketLoading.value = false
   }
@@ -1192,7 +1192,7 @@ onMounted(fetchDetail)
 
 
 
-// 门票区域
+// 行程区域
 .ticket-section {
   background: white;
   padding: 40px 0;

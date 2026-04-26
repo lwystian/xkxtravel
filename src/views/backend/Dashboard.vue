@@ -96,8 +96,8 @@
           <el-card class="action-card ticket-card" @click="navigateTo('/back/ticket')">
             <div class="action-content">
               <el-icon class="action-icon"><Ticket /></el-icon>
-              <h3>门票管理</h3>
-              <p>管理景点门票信息</p>
+              <h3>行程管理</h3>
+              <p>管理景点行程信息</p>
             </div>
           </el-card>
         </el-col>

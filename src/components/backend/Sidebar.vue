@@ -51,7 +51,7 @@
         
         <el-menu-item index="/back/ticket" v-if="userStore.isAdmin">
           <el-icon><Ticket /></el-icon>
-          <template #title>门票管理</template>
+          <template #title>行程管理</template>
         </el-menu-item>
         
         <el-menu-item index="/back/order" v-if="userStore.isAdmin">

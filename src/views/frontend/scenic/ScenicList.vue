@@ -1,208 +1,164 @@
 <!-- eslint-disable -->
 <template>
   <div class="scenic-frontend-container">
-
-    <!-- 搜索和筛选区域 -->
-    <div class="search-filter-section">
-      <div class="section-container">
-        <!-- 页面标题和统计 -->
-        <div class="page-header">
-          <div class="header-content">
-            <h1 class="page-title">
-              <span class="title-icon">🏞️</span>
-              探索精彩景点
-            </h1>
-            <p class="page-subtitle">
-              发现世界各地的美丽风景和文化遗产
-            </p>
-          </div>
-
+    <!-- Hero 区域 - 背景图片适中 -->
+    <div class="hero-section" ref="heroSection">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div class="hero-text">
+          <h1 class="hero-title">探索精彩景点</h1>
+          <p class="hero-subtitle">发现世界各地的美丽风景和文化遗产</p>
         </div>
-
-        <!-- 搜索栏 -->
-        <div class="search-card">
-          <div class="search-header">
-            <h3 class="search-title">
-              <el-icon><Search /></el-icon>
-              智能搜索
-            </h3>
+        <div class="hero-search">
+          <div class="search-field main-field">
+            <el-icon class="field-icon"><Search /></el-icon>
+            <input
+              v-model="searchForm.name"
+              type="text"
+              class="search-input"
+              placeholder="搜索景点名称..."
+              @keyup.enter="handleSearch"
+            />
           </div>
-            <div class="search-form">
-              <div class="search-inputs">
-                <div class="search-input-group">
-                  <el-input
-                    v-model="searchForm.name"
-                    placeholder="搜索景点名称、地区或描述..."
-                    clearable
-                    size="large"
-                    class="main-search-input"
-                    @keyup.enter="handleSearch"
-                  >
-                    <template #prefix>
-                      <el-icon><Search /></el-icon>
-                    </template>
-                  </el-input>
-                </div>
-                <div class="search-input-group">
-                  <el-input
-                    v-model="searchForm.location"
-                    placeholder="地区筛选"
-                    clearable
-                    size="large"
-                    @keyup.enter="handleSearch"
-                  >
-                    <template #prefix>
-                      <el-icon><Location /></el-icon>
-                    </template>
-                  </el-input>
-                </div>
-                <div class="search-actions">
-                  <el-button type="primary" @click="handleSearch" class="search-btn" size="large">
-                    <el-icon><Search /></el-icon>
-                    搜索
-                  </el-button>
-                  <el-button @click="resetSearch" class="reset-btn" size="large">
-                    <el-icon><Refresh /></el-icon>
-                    重置
-                  </el-button>
-                </div>
-              </div>
+          <button class="hero-search-btn" @click="handleSearch">
+            <el-icon><Search /></el-icon>
+            <span>搜索</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
-              <!-- 搜索结果提示 -->
-              <div v-if="searchForm.name || searchForm.location || searchForm.categoryId" class="search-tags">
-                <el-tag
-                  v-if="searchForm.name"
-                  closable
-                  @close="clearSearchName"
-                  type="info"
-                  effect="dark"
-                  class="search-tag"
-                >
-                  关键词: {{ searchForm.name }}
-                </el-tag>
-                <el-tag
-                  v-if="searchForm.location"
-                  closable
-                  @close="clearSearchLocation"
-                  type="warning"
-                  effect="dark"
-                  class="search-tag"
-                >
-                  地区: {{ searchForm.location }}
-                </el-tag>
-                <el-tag
-                  v-if="searchForm.categoryId && getCurrentCategoryName()"
-                  closable
-                  @close="clearSearchCategory"
-                  type="success"
-                  effect="dark"
-                  class="search-tag"
-                >
-                  分类: {{ getCurrentCategoryName() }}
-                </el-tag>
-              </div>
-            </div>
-
-          <!-- 分类筛选 -->
-          <div class="category-filter">
-            <h3 class="filter-title">
-              <el-icon><Grid /></el-icon>
-              景点分类
-            </h3>
-            <div class="category-chips">
-              <div
+    <!-- 主内容区 -->
+    <div class="main-section" ref="mainSection">
+      <div class="section-container">
+        <!-- 分类标签栏 -->
+        <div class="category-bar">
+          <div class="category-wrapper">
+            <span class="category-label">热门分类</span>
+            <div class="category-list">
+              <span
                 v-for="category in categoryList"
                 :key="category.id"
                 class="category-chip"
-                :class="{'active': searchForm.categoryId === category.id}"
+                :class="{ active: searchForm.categoryId === category.id }"
                 @click="handleCategoryChange(category.id)"
               >
-                <span class="chip-text">{{ category.name }}</span>
+                {{ category.name }}
                 <span class="chip-count" v-if="category.count">({{ category.count }})</span>
+              </span>
+            </div>
+          </div>
+          <div class="reset-btn" @click="resetSearch">
+            <el-icon><Refresh /></el-icon>
+            <span>重置筛选</span>
+          </div>
+        </div>
+
+        <!-- 结果统计与排序 -->
+        <div class="result-bar">
+          <div class="result-count">
+            发现 <strong>{{ total }}</strong> 个精彩景点
+          </div>
+          <div class="sort-tabs">
+            <span
+              v-for="s in sortOptions"
+              :key="s.value"
+              class="sort-tab"
+              :class="{ active: currentSort === s.value }"
+              @click="currentSort = s.value"
+            >
+              {{ s.label }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 景点列表 - 横版大卡片 -->
+        <div v-if="loading" class="loading-state">
+          <div class="skeleton-list">
+            <div v-for="i in 5" :key="i" class="skeleton-card-horizontal">
+              <div class="skeleton-img-horizontal"></div>
+              <div class="skeleton-content-horizontal">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-footer"></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 景点列表区域 -->
-      <div class="scenic-list-section">
-        <div class="section-container">
-
-          <div class="scenic-grid" v-if="tableData && tableData.length > 0">
-            <div
-              v-for="(item, index) in tableData"
-              :key="item.id"
-              class="scenic-card"
-              :class="`delay-${(index % 6 + 1) * 100}`"
-              @click="goDetail(item.id)"
-            >
-              <div class="card-image">
-                <img :src="getImageUrl(item.imageUrl)" :alt="item.name" />
-                <div class="image-overlay">
-                  <div class="overlay-content">
-                    <div class="scenic-rating">
-                      <el-icon><Star /></el-icon>
-                      {{ item.rating || '4.5' }}
-                    </div>
-                  </div>
-                </div>
-                <div class="card-badges">
-                  <span v-if="item.categoryInfo" class="badge category">{{ item.categoryInfo.name }}</span>
-                  <span v-if="item.price === 0" class="badge free">免费</span>
-                  <span v-else-if="item.price > 0" class="badge price">¥{{ item.price }}</span>
-                  <span v-if="collectionStatus[item.id]" class="badge collected">
-                    <el-icon><Star /></el-icon>
-                    已收藏
-                  </span>
-                </div>
+        <div v-else-if="tableData && tableData.length > 0" class="scenic-list">
+          <div
+            v-for="(item, index) in tableData"
+            :key="item.id"
+            class="scenic-card-horizontal"
+            @click="goDetail(item.id)"
+          >
+            <!-- 左侧图片区域 - 固定宽高 -->
+            <div class="card-image-horizontal">
+              <img :src="getImageUrl(item.imageUrl)" :alt="item.name" />
+              <div class="image-tags">
+                <span v-if="item.price === 0" class="tag free-tag">免费</span>
+                <span v-else class="tag price-tag">¥{{ item.price || '99' }}起</span>
               </div>
-              <div class="card-content">
-                <h3 class="scenic-name">{{ item.name }}</h3>
-                <div class="scenic-location">
-                  <el-icon><Location /></el-icon>
-                  {{ item.location || '未知地区' }}
-                </div>
-                <p class="scenic-desc">{{ truncateText(item.description, 80) }}</p>
-                <div class="card-footer">
-                  <div class="card-meta">
-                    <div class="meta-stats">
-                      <span class="rating-info" v-if="item.rating">
-                        <el-icon><Star /></el-icon>
-                        {{ getDisplayRating(item.rating) }}
-                      </span>
-                      <span class="review-count">{{ formatReviewCount(item.reviewCount) }}</span>
-                    </div>
+              <div class="rating-badge-horizontal">
+                <el-icon><Star /></el-icon>
+                <span>{{ getDisplayRating(item.rating) }}</span>
+              </div>
+            </div>
+            
+            <!-- 右侧内容区域 - 左对齐 -->
+            <div class="card-info-horizontal">
+              <div class="info-header">
+                <h3 class="scenic-name-horizontal">{{ item.name }}</h3>
+                <div class="category-tag">{{ item.categoryInfo?.name || '景点' }}</div>
+              </div>
+              
+              <div class="location-info">
+                <el-icon><Location /></el-icon>
+                <span>{{ item.location || '未知地区' }}</span>
+              </div>
+              
+              <p class="description">{{ truncateText(item.description, 100) }}</p>
+              
+              <div class="feature-tags">
+                <span class="feature-tag">🏛️ 文化古迹</span>
+                <span class="feature-tag">📸 拍照圣地</span>
+                <span class="feature-tag">🎫 快速出票</span>
+              </div>
+              
+              <div class="card-footer-horizontal">
+                <div class="stats">
+                  <div class="stat">
+                    <el-icon><ChatDotRound /></el-icon>
+                    <span>{{ formatReviewCount(item.reviewCount) }}</span>
                   </div>
-                  <el-button type="primary" size="small" class="detail-btn" @click.stop="goDetail(item.id)">
-                    查看详情
-                  </el-button>
                 </div>
+                <button class="book-btn">查看详情 →</button>
               </div>
             </div>
           </div>
+        </div>
 
-          <div v-else class="empty-state">
-            <div class="empty-icon">🔍</div>
-            <h3 class="empty-title">暂无景点信息</h3>
-            <p class="empty-desc">试试调整搜索条件或浏览其他分类</p>
-            <el-button type="primary" @click="resetSearch" class="empty-action">
-              重新搜索
-            </el-button>
-          </div>
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <div class="empty-icon">🏔️</div>
+          <h3 class="empty-title">暂无景点信息</h3>
+          <p class="empty-desc">试试调整搜索条件或浏览其他分类</p>
+          <button class="empty-action" @click="resetSearch">重新探索</button>
+        </div>
 
-          <!-- 分页 -->
-          <div class="pagination-wrapper" v-if="total > 0">
-            <el-pagination
-              background
-              layout="total, prev, pager, next, jumper"
-              :current-page="currentPage"
-              :page-size="pageSize"
-              :total="total"
-              @current-change="handleCurrentChange"
-              class="modern-pagination"
-            />
-          </div>
+        <!-- 分页 -->
+        <div class="pagination-wrapper" v-if="total > 0">
+          <el-pagination
+            background
+            layout="prev, pager, next"
+            :current-page="currentPage"
+            :page-size="pageSize"
+            :total="total"
+            @current-change="handleCurrentChange"
+            class="modern-pagination"
+          />
         </div>
       </div>
     </div>
@@ -210,142 +166,142 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { useUserStore } from '@/store/user'
-import { Search, Location, Refresh, Star, Grid } from '@element-plus/icons-vue'
+import { Search, Location, Refresh, Star, ChatDotRound } from '@element-plus/icons-vue'
 
 const baseAPI = process.env.VUE_APP_BASE_API || '/api'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// DOM 引用
+const heroSection = ref(null)
+const mainSection = ref(null)
+
+// 数据状态
 const tableData = ref([])
 const categoryList = ref([])
+const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(8)
 const total = ref(0)
+const hasUserSearched = ref(false) // 追踪用户是否主动搜索
+
+// 搜索表单
 const searchForm = reactive({
   name: '',
-  location: '',
   categoryId: null
 })
-const collectionStatus = ref({}) // 收藏状态映射
 
-// 检查是否登录
-const isLoggedIn = computed(() => userStore.isLoggedIn)
+// 排序
+const currentSort = ref('recommend')
+const sortOptions = [
+  { label: '推荐排序', value: 'recommend' },
+  { label: '评分最高', value: 'rating' },
+  { label: '价格最低', value: 'price_asc' }
+]
 
+// 滚动到内容区域
+const scrollToContent = () => {
+  nextTick(() => {
+    if (hasUserSearched.value && mainSection.value) {
+      window.scrollTo({
+        top: mainSection.value.offsetTop,
+        behavior: 'smooth'
+      })
+    }
+  })
+}
+
+// 获取分类列表
 const fetchCategories = async () => {
   try {
     await request.get('/scenic-category/tree', {}, {
       onSuccess: (res) => {
-        categoryList.value = res || [];
+        categoryList.value = res || []
       }
-    });
+    })
   } catch (error) {
-    console.error('获取分类列表失败:', error);
-    categoryList.value = [];
+    console.error('获取分类列表失败:', error)
+    categoryList.value = []
   }
 }
 
+// 获取景点列表
 const fetchScenicSpots = async () => {
+  loading.value = true
   try {
-    await request.get('/scenic/page', {
+    const params = {
       name: searchForm.name,
-      location: searchForm.location,
       categoryId: searchForm.categoryId,
       currentPage: currentPage.value,
       size: pageSize.value
-    }, {
+    }
+
+    // 排序处理
+    if (currentSort.value === 'rating') {
+      params.orderBy = 'rating'
+      params.order = 'desc'
+    } else if (currentSort.value === 'price_asc') {
+      params.orderBy = 'price'
+      params.order = 'asc'
+    }
+
+    await request.get('/scenic/page', params, {
       onSuccess: (res) => {
         tableData.value = res.records || []
         total.value = res.total || 0
-        
-        // 如果用户已登录，检查收藏状态
-        if (isLoggedIn.value && tableData.value.length > 0) {
-          checkCollectionStatus()
-        }
-
-        // 获取评论统计信息
-        if (tableData.value.length > 0) {
-          fetchBatchCommentStats()
-        }
+        scrollToContent()
       }
     })
   } catch (error) {
     console.error('获取景点列表失败:', error)
     tableData.value = []
     total.value = 0
+  } finally {
+    loading.value = false
   }
 }
 
-// 检查景点收藏状态
-const checkCollectionStatus = async () => {
-  // 提取景点ID列表
-  const scenicIds = tableData.value.map(item => item.id)
-  if (scenicIds.length === 0) return
-  
-  try {
-    await request.post('/scenic-collection/batch-is-collected', scenicIds, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        collectionStatus.value = res || {}
-      }
-    })
-  } catch (error) {
-    console.error('获取收藏状态失败:', error)
-  }
-}
-
-// 处理URL搜索参数
+// 处理URL参数
 const handleUrlParams = () => {
   const searchParam = route.query.search
   const categoryParam = route.params.categoryId
 
   if (searchParam) {
-    // 如果有搜索参数，设置到搜索表单中
     searchForm.name = decodeURIComponent(searchParam)
-  } else {
-    searchForm.name = ''
+    hasUserSearched.value = true
   }
-
   if (categoryParam) {
-    // 如果有分类参数，设置分类ID
     searchForm.categoryId = parseInt(categoryParam)
+    hasUserSearched.value = true
   }
-  // 重置页码并重新获取数据
   currentPage.value = 1
   fetchScenicSpots()
 }
 
-// 监听路由参数变化 - 只监听 search 参数
-watch(() => route.query.search, (newSearch, oldSearch) => {
-  if (newSearch !== oldSearch) {
-    handleUrlParams()
-  }
-}, { immediate: false })
-
-watch(() => route.params.categoryId, (newCategoryId, oldCategoryId) => {
-  if (newCategoryId !== oldCategoryId) {
-    handleUrlParams()
-  }
-}, { immediate: false })
-
-onMounted(() => {
-  fetchCategories();
-  handleUrlParams();
-  fetchScenicSpots();
+// 监听路由变化
+watch(() => route.query.search, () => handleUrlParams())
+watch(() => route.params.categoryId, () => handleUrlParams())
+watch(currentSort, () => {
+  currentPage.value = 1
+  fetchScenicSpots()
 })
 
+// 方法
 const handleSearch = () => {
+  hasUserSearched.value = true
   currentPage.value = 1
   fetchScenicSpots()
 }
 
 const resetSearch = () => {
   searchForm.name = ''
-  searchForm.location = ''
-  searchForm.categoryId = null // 重置分类ID
+  searchForm.categoryId = null
+  hasUserSearched.value = true
   currentPage.value = 1
   fetchScenicSpots()
 }
@@ -353,15 +309,16 @@ const resetSearch = () => {
 const handleCurrentChange = (page) => {
   currentPage.value = page
   fetchScenicSpots()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const handleCategoryChange = (categoryId) => {
-  // 如果点击当前已选中的分类，则取消选择
   if (searchForm.categoryId === categoryId) {
     searchForm.categoryId = null
   } else {
     searchForm.categoryId = categoryId
   }
+  hasUserSearched.value = true
   currentPage.value = 1
   fetchScenicSpots()
 }
@@ -370,286 +327,216 @@ const goDetail = (id) => {
   router.push(`/scenic/${id}`)
 }
 
-// 清除搜索条件的方法
-const clearSearchName = () => {
-  searchForm.name = ''
-  handleSearch()
-}
-
-const clearSearchLocation = () => {
-  searchForm.location = ''
-  handleSearch()
-}
-
-const clearSearchCategory = () => {
-  searchForm.categoryId = null
-  handleSearch()
-}
-
-// 获取当前选中分类的名称
-const getCurrentCategoryName = () => {
-  if (!searchForm.categoryId) return ''
-  const category = categoryList.value.find(cat => cat.id === searchForm.categoryId)
-  return category ? category.name : ''
-}
-
-// 获取图片完整URL
 const getImageUrl = (url) => {
-  if (!url) return '/default-scenic.jpg'
+  if (!url) return 'https://picsum.photos/seed/scape/400/260'
   return url.startsWith('http') ? url : baseAPI + url
 }
 
-// 截取文本
 const truncateText = (text, length) => {
   if (!text) return ''
   return text.length > length ? text.substring(0, length) + '...' : text
 }
 
-// 格式化评价数量
 const formatReviewCount = (count) => {
   if (!count || count === 0) return '暂无评价'
-  if (count === 1) return '1条评价'
-  return `${count}条评价`
+  if (count >= 10000) return (count / 10000).toFixed(1) + 'w'
+  return count + '条评价'
 }
 
-// 获取评分显示
 const getDisplayRating = (rating) => {
   if (!rating) return '4.5'
   return parseFloat(rating).toFixed(1)
 }
 
-// 批量获取评论统计信息
-const fetchBatchCommentStats = async () => {
-  // 为每个景点获取评论统计
-  for (const item of tableData.value) {
-    try {
-      await request.get('/comment/page', {
-        scenicId: item.id,
-        currentPage: 1,
-        size: 1  // 只需要获取总数
-      }, {
-        showDefaultMsg: false,
-        onSuccess: (res) => {
-          // 更新景点的评论数量
-          item.reviewCount = res.total || 0
-        }
-      })
-    } catch (error) {
-      console.error(`获取景点${item.id}评论统计失败:`, error)
-      item.reviewCount = 0
-    }
-  }
-}
+// 生命周期
+onMounted(() => {
+  fetchCategories()
+  handleUrlParams()
+})
 </script>
 
 <style lang="scss" scoped>
+$primary: #FF6B35;
+$primary-dark: #e55a2a;
+$text-main: #1a1a2e;
+$text-sub: #6c757d;
+$text-light: #adb5bd;
+$bg-light: #f8f9fa;
+$border: #e9ecef;
+
 .scenic-frontend-container {
   min-height: 100vh;
-  background: #FFFFFF;
-  font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
-  color: #333;
-  
-// 通用容器样式
+  background: $bg-light;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* ============== Hero 区域 - 背景图片占满当前页 ============== */
+.hero-section {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 215px);
+  background: url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80') center bottom / cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 700px;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.hero-text {
+  margin-bottom: 32px;
+}
+
+.hero-title {
+  font-size: 42px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 12px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+/* 搜索栏 - 更细长 */
+.hero-search {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 48px;
+  padding: 4px 4px 4px 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 0 8px;
+
+  .field-icon {
+    color: $primary;
+    font-size: 18px;
+  }
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  padding: 12px 0;
+  background: transparent;
+
+  &::placeholder {
+    color: $text-light;
+    font-size: 14px;
+  }
+}
+
+.hero-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 24px;
+  height: 44px;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    background: $primary-dark;
+    transform: scale(1.02);
+  }
+}
+
+/* ============== 主内容区 ============== */
+.main-section {
+  padding: 40px 0 60px;
+}
+
 .section-container {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 0 20px;
 }
 
-// 搜索筛选区域
-.search-filter-section {
-  background: #F9F9F9;
-  padding: 0;
-}
-
-// 页面头部
-.page-header {
+/* 分类栏 */
+.category-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
-  padding: 40px 0 20px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 36px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  color: #2d3748;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  .title-icon {
-    font-size: 32px;
-  }
-}
-
-.page-subtitle {
-  text-align: left;
-  font-size: 16px;
-  color: #64748b;
-  margin: 0;
-}
-
-
-
-
-.search-card {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  margin-bottom: 30px;
-  border: 1px solid #e2e8f0;
-}
-
-.search-header {
-  margin-bottom: 20px;
-}
-
-.search-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  .el-icon {
-    color: #667eea;
-  }
-}
-
-.search-form {
-  .search-inputs {
-    display: grid;
-    grid-template-columns: 2fr 1fr auto;
-    gap: 16px;
-    align-items: end;
-    margin-bottom: 20px;
-  }
-
-  .search-input-group {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .main-search-input {
-    :deep(.el-input__wrapper) {
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 2px solid #e2e8f0;
-      transition: all 0.3s ease;
-
-      &:hover {
-        border-color: #667eea;
-      }
-
-      &.is-focus {
-        border-color: #667eea;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-      }
-    }
-  }
-
-  .search-actions {
-    display: flex;
-    gap: 12px;
-  }
-
-  .search-btn {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border: none;
-    border-radius: 12px;
-    font-weight: 600;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transition: all 0.3s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-    }
-  }
-
-  .reset-btn {
-    border-radius: 12px;
-    border: 2px solid #e2e8f0;
-    color: #64748b;
-    background: white;
-
-    &:hover {
-      border-color: #667eea;
-      color: #667eea;
-      background: #FFFFFF;
-    }
-  }
-}
-
-.search-tags {
-  display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-
-  .search-tag {
-    border-radius: 20px;
-    font-weight: 500;
-  }
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid $border;
 }
 
-// 分类筛选
-.category-filter {
-  margin-top: 20px;
+.category-wrapper {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.filter-title {
-  font-size: 18px;
+.category-label {
+  font-size: 14px;
   font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  .el-icon {
-    color: #667eea;
-  }
+  color: $text-sub;
 }
 
-.category-chips {
+.category-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 }
 
 .category-chip {
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 2px solid #e2e8f0;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  padding: 8px 18px;
   font-size: 14px;
   font-weight: 500;
-  color: #64748b;
+  color: $text-sub;
+  background: #fff;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid $border;
 
   &:hover {
-    border-color: #667eea;
-    color: #667eea;
-    transform: translateY(-1px);
+    border-color: $primary;
+    color: $primary;
   }
 
   &.active {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border-color: transparent;
-    color: white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    background: $primary;
+    border-color: $primary;
+    color: #fff;
   }
 
   .chip-count {
@@ -658,315 +545,509 @@ const fetchBatchCommentStats = async () => {
   }
 }
 
-// 景点列表区域
-.scenic-list-section {
-  background: #F9F9F9;
-  margin: 0;
-  padding-top: 20px;
+.reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  color: $text-sub;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary;
+  }
 }
 
-.section-header {
+/* 结果栏 */
+.result-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
   flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.result-count {
+  font-size: 14px;
+  color: $text-sub;
+
+  strong {
+    color: $primary;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 4px;
+  }
+}
+
+.sort-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.sort-tab {
+  padding: 6px 18px;
+  font-size: 13px;
+  color: $text-sub;
+  background: #fff;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid $border;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary;
+  }
+
+  &.active {
+    background: $primary;
+    border-color: $primary;
+    color: #fff;
+  }
+}
+
+/* 骨架屏 - 横版 */
+.loading-state {
+  min-height: 400px;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
-.section-title {
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0;
-  color: #2d3748;
+.skeleton-card-horizontal {
   display: flex;
-  align-items: center;
-  gap: 12px;
-
-  .title-icon {
-    font-size: 28px;
-  }
-}
-
-.results-info {
-  font-size: 16px;
-  color: #64748b;
-
-  .highlight {
-    color: #667eea;
-    font-weight: 600;
-  }
-}
-
-// 景点网格布局
-.scenic-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
-}
-
-.scenic-card {
-  border-radius: 16px;
-  overflow: hidden;
   background: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.4s ease;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.skeleton-img-horizontal {
+  width: 320px;
+  height: 220px;
+  background: linear-gradient(90deg, #e9ecef 25%, #f8f9fa 50%, #e9ecef 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.5s infinite;
+}
+
+.skeleton-content-horizontal {
+  flex: 1;
+  padding: 20px;
+}
+
+.skeleton-title {
+  height: 22px;
+  width: 60%;
+  background: #e9ecef;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.skeleton-line {
+  height: 14px;
+  background: #e9ecef;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+
+.skeleton-footer {
+  margin-top: 20px;
+  height: 32px;
+  width: 30%;
+  background: #e9ecef;
+  border-radius: 20px;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============== 横版大卡片样式 ============== */
+.scenic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.scenic-card-horizontal {
+  display: flex;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
   cursor: pointer;
-  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 
   &:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-
-    .card-image img {
-      transform: scale(1.1);
-    }
-
-    .image-overlay {
-      opacity: 1;
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+    
+    .card-image-horizontal img {
+      transform: scale(1.05);
     }
   }
 }
 
-.card-image {
-  height: 220px;
-  overflow: hidden;
+/* 左侧图片区域 - 固定宽高 */
+.card-image-horizontal {
   position: relative;
+  width: 320px;
+  height: 220px;
+  flex-shrink: 0;
+  overflow: hidden;
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.6s ease;
+    transition: transform 0.4s ease;
   }
 }
 
-.image-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  display: flex;
-  align-items: flex-end;
-  padding: 20px;
-}
-
-.overlay-content {
-  color: white;
-
-  .scenic-rating {
-    display: flex;
-    align-items: center;
-    font-size: 14px;
-    font-weight: 600;
-
-    .el-icon {
-      margin-right: 4px;
-      color: #ffd700;
-    }
-  }
-}
-
-.card-badges {
+.image-tags {
   position: absolute;
   top: 12px;
   left: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.badge {
-  padding: 4px 8px;
-  border-radius: 12px;
+.tag {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  
+  &.free-tag {
+    background: #10b981;
+    color: #fff;
+  }
+  
+  &.price-tag {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+  }
+}
+
+.rating-badge-horizontal {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 20px;
+  color: #FFD700;
   font-size: 12px;
   font-weight: 600;
-  backdrop-filter: blur(10px);
 
-  &.category {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    color: white;
+  .el-icon {
+    font-size: 11px;
   }
 
-  &.free {
-    background: linear-gradient(45deg, #10b981, #059669);
-    color: white;
-  }
-
-  &.price {
-    background: rgba(255, 255, 255, 0.9);
-    color: #333;
-  }
-
-  &.collected {
-    background: linear-gradient(45deg, #f59e0b, #d97706);
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 2px;
+  span {
+    color: #fff;
   }
 }
-  
-.card-content {
-  padding: 20px;
+
+/* 右侧内容区域 - 左对齐 */
+.card-info-horizontal {
+  flex: 1;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
 }
 
-.scenic-name {
-  margin: 0 0 8px;
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.scenic-name-horizontal {
   font-size: 18px;
   font-weight: 700;
-  color: #2d3748;
+  color: $text-main;
+  margin: 0;
+  text-align: left;
+}
+
+.category-tag {
+  padding: 4px 12px;
+  background: #f0f0f0;
+  border-radius: 20px;
+  font-size: 11px;
+  color: #666;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: $text-sub;
+  margin-bottom: 10px;
+
+  .el-icon {
+    color: $primary;
+    font-size: 13px;
+  }
+}
+
+.description {
+  font-size: 13px;
+  color: $text-sub;
+  line-height: 1.5;
+  margin: 0 0 14px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.3;
+  text-align: left;
 }
 
-.scenic-location {
+.feature-tags {
   display: flex;
-  align-items: center;
-  font-size: 14px;
-  color: #64748b;
-  margin-bottom: 12px;
-
-  .el-icon {
-    margin-right: 4px;
-    color: #667eea;
-  }
-}
-
-.scenic-desc {
-  font-size: 14px;
-  color: #64748b;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.5;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-.card-footer {
+.feature-tag {
+  padding: 4px 12px;
+  background: $bg-light;
+  border-radius: 20px;
+  font-size: 11px;
+  color: $primary;
+  border: 1px solid $border;
+}
+
+.card-footer-horizontal {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
 }
 
-.card-meta {
-  .meta-stats {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: #64748b;
-  }
+.stats {
+  display: flex;
+  gap: 20px;
+}
 
-  .rating-info {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    color: #667eea;
-    font-weight: 600;
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: $text-light;
 
-    .el-icon {
-      color: #ffd700;
-      font-size: 14px;
-    }
-  }
-
-  .review-count {
-    color: #94a3b8;
+  .el-icon {
+    font-size: 13px;
   }
 }
 
-.detail-btn {
-  border-radius: 20px;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  border: none;
+.book-btn {
+  padding: 7px 24px;
+  background: transparent;
+  border: 1.5px solid $primary;
+  border-radius: 30px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 8px 16px;
+  color: $primary;
+  cursor: pointer;
+  transition: all 0.3s;
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: $primary;
+    color: #fff;
   }
 }
-  
-// 空状态
+
+/* 空状态 */
 .empty-state {
   text-align: center;
   padding: 80px 20px;
+  background: #fff;
+  border-radius: 24px;
+}
 
-  .empty-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-  }
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
 
-  .empty-title {
-    font-size: 24px;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0 0 8px;
-  }
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-main;
+  margin: 0 0 8px;
+}
 
-  .empty-desc {
-    font-size: 16px;
-    color: #64748b;
-    margin: 0 0 24px;
-  }
+.empty-desc {
+  font-size: 14px;
+  color: $text-sub;
+  margin: 0 0 28px;
+}
 
-  .empty-action {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border: none;
-    border-radius: 20px;
-    padding: 12px 24px;
-    font-weight: 600;
+.empty-action {
+  padding: 10px 32px;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    background: $primary-dark;
   }
 }
 
-// 分页样式
+/* 分页 */
 .pagination-wrapper {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
+  margin-top: 48px;
 }
 
 .modern-pagination {
   :deep(.el-pagination) {
     .el-pager li {
-      border-radius: 8px;
+      border-radius: 40px;
       margin: 0 4px;
-      transition: all 0.3s ease;
+      transition: all 0.2s;
 
       &:hover {
-        background: #667eea;
-        color: white;
+        background: $primary;
+        color: #fff;
       }
 
       &.is-active {
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        color: white;
+        background: $primary;
+        color: #fff;
       }
     }
 
-    .btn-prev,
-    .btn-next {
-      border-radius: 8px;
-      transition: all 0.3s ease;
+    .btn-prev, .btn-next {
+      border-radius: 40px;
 
       &:hover {
-        background: #667eea;
-        color: white;
+        background: $primary;
+        color: #fff;
       }
     }
   }
 }
 
+/* 响应式 */
+@media (max-width: 992px) {
+  .card-image-horizontal {
+    width: 280px;
+    height: 200px;
+  }
+  
+  .scenic-name-horizontal {
+    font-size: 17px;
+  }
 }
-</style> 
+
+@media (max-width: 768px) {
+  .hero-section {
+    height: calc(100vh - 140px);
+  }
+
+  .hero-title {
+    font-size: 28px;
+  }
+
+  .hero-subtitle {
+    font-size: 13px;
+  }
+
+  .hero-search {
+    flex-direction: column;
+    border-radius: 28px;
+    padding: 12px;
+    gap: 10px;
+    max-width: 90%;
+  }
+
+  .search-field {
+    width: 100%;
+    border: 1px solid $border;
+    border-radius: 40px;
+    padding: 6px 16px;
+  }
+
+  .hero-search-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .category-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .result-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .scenic-card-horizontal {
+    flex-direction: column;
+  }
+  
+  .card-image-horizontal {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .scenic-name-horizontal {
+    font-size: 17px;
+  }
+  
+  .card-footer-horizontal {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .book-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .stats {
+    gap: 16px;
+  }
+  
+  .info-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+</style>

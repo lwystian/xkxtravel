@@ -1,14 +1,14 @@
 <template>
   <div class="ticket-management">
     <div class="page-header">
-      <h1 class="page-title">门票管理</h1>
+      <h1 class="page-title">行程管理</h1>
       <p class="page-subtitle">Ticket Management</p>
     </div>
 
     <div class="action-bar">
       <div class="action-right">
         <el-button type="primary" @click="showAddDialog" class="add-btn">
-          <i class="el-icon-plus"></i> 添加门票
+          <i class="el-icon-plus"></i> 添加行程
         </el-button>
       </div>
     </div>
@@ -16,11 +16,11 @@
     <!-- 搜索表单 -->
     <el-card shadow="never" class="search-card">
       <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="门票名称">
-          <el-input v-model="searchForm.ticketName" placeholder="请输入门票名称" clearable></el-input>
+        <el-form-item label="行程名称">
+          <el-input v-model="searchForm.ticketName" placeholder="请输入行程名称" clearable></el-input>
         </el-form-item>
-        <el-form-item label="门票类型">
-          <el-select v-model="searchForm.ticketType" placeholder="请选择门票类型" clearable>
+        <el-form-item label="行程类型">
+          <el-select v-model="searchForm.ticketType" placeholder="请选择行程类型" clearable>
             <el-option label="成人票" value="成人票"></el-option>
             <el-option label="儿童票" value="儿童票"></el-option>
             <el-option label="学生票" value="学生票"></el-option>
@@ -53,7 +53,7 @@
       </el-form>
     </el-card>
 
-    <!-- 门票列表表格 -->
+    <!-- 行程列表表格 -->
     <el-card shadow="never" class="table-card">
       <el-table
         v-loading="loading"
@@ -63,7 +63,7 @@
         class="ticket-table"
       >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="ticketName" label="门票名称" min-width="150" />
+        <el-table-column prop="ticketName" label="行程名称" min-width="150" />
         <el-table-column prop="scenicId" label="所属景点" width="150">
           <template #default="scope">
             <span class="scenic-name">{{ getScenicSpotName(scope.row.scenicId) }}</span>
@@ -134,9 +134,9 @@
       </div>
     </el-card>
 
-    <!-- 添加/编辑门票对话框 -->
+    <!-- 添加/编辑行程对话框 -->
     <el-dialog
-      :title="isEdit ? '编辑门票' : '添加门票'"
+      :title="isEdit ? '编辑行程' : '添加行程'"
       v-model="dialogVisible"
       width="60%"
       class="ticket-dialog"
@@ -163,18 +163,18 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="门票名称" prop="ticketName">
-          <el-input v-model="ticketForm.ticketName" placeholder="请输入门票名称" />
+        <el-form-item label="行程名称" prop="ticketName">
+          <el-input v-model="ticketForm.ticketName" placeholder="请输入行程名称" />
         </el-form-item>
-        <el-form-item label="门票类型" prop="ticketType">
-          <el-select v-model="ticketForm.ticketType" placeholder="请选择门票类型" style="width: 100%">
+        <el-form-item label="行程类型" prop="ticketType">
+          <el-select v-model="ticketForm.ticketType" placeholder="请选择行程类型" style="width: 100%">
             <el-option label="成人票" value="成人票"></el-option>
             <el-option label="儿童票" value="儿童票"></el-option>
             <el-option label="学生票" value="学生票"></el-option>
             <el-option label="老人票" value="老人票"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="门票价格" prop="price">
+        <el-form-item label="行程价格" prop="price">
           <el-input-number v-model="ticketForm.price" :precision="2" :min="0" :step="10" style="width: 100%" />
         </el-form-item>
         <el-form-item label="优惠价格" prop="discountPrice">
@@ -184,10 +184,10 @@
         <el-form-item label="有效期" prop="validPeriod">
           <el-input v-model="ticketForm.validPeriod" placeholder="例如：购买后30日内有效" />
         </el-form-item>
-        <el-form-item label="门票库存" prop="stock">
+        <el-form-item label="行程库存" prop="stock">
           <el-input-number v-model="ticketForm.stock" :min="0" :step="10" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="门票状态" prop="status">
+        <el-form-item label="行程状态" prop="status">
           <el-switch
             v-model="ticketForm.status"
             :active-value="1"
@@ -196,8 +196,8 @@
             inactive-text="不可预订"
           />
         </el-form-item>
-        <el-form-item label="门票描述">
-          <el-input v-model="ticketForm.description" type="textarea" :rows="4" placeholder="请输入门票描述信息" />
+        <el-form-item label="行程描述">
+          <el-input v-model="ticketForm.description" type="textarea" :rows="4" placeholder="请输入行程描述信息" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -220,7 +220,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-// 门票列表数据
+// 行程列表数据
 const ticketList = ref([])
 const loading = ref(false)
 
@@ -242,7 +242,7 @@ const isEdit = ref(false)
 const formLoading = ref(false)
 const ticketFormRef = ref(null)
 
-// 门票表单数据
+// 行程表单数据
 const ticketForm = reactive({
   id: null,
   scenicId: null,
@@ -262,14 +262,14 @@ const ticketRules = {
     { required: true, message: '请选择关联景点', trigger: 'change' }
   ],
   ticketName: [
-    { required: true, message: '请输入门票名称', trigger: 'blur' },
+    { required: true, message: '请输入行程名称', trigger: 'blur' },
     { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
   ],
   price: [
-    { required: true, message: '请输入门票价格', trigger: 'blur' }
+    { required: true, message: '请输入行程价格', trigger: 'blur' }
   ],
   ticketType: [
-    { required: true, message: '请选择门票类型', trigger: 'change' }
+    { required: true, message: '请选择行程类型', trigger: 'change' }
   ],
   validPeriod: [
     { required: true, message: '请输入有效期', trigger: 'blur' }
@@ -279,7 +279,7 @@ const ticketRules = {
   ]
 }
 
-// 获取门票列表
+// 获取行程列表
 const fetchTickets = async () => {
   loading.value = true
   try {
@@ -297,7 +297,7 @@ const fetchTickets = async () => {
       }
     })
   } catch (error) {
-    console.error('获取门票列表失败:', error)
+    console.error('获取行程列表失败:', error)
   } finally {
     loading.value = false
   }
@@ -397,7 +397,7 @@ const showAddDialog = () => {
   dialogVisible.value = true
 }
 
-// 编辑门票
+// 编辑行程
 const handleEdit = (row) => {
   isEdit.value = true
   resetForm()
@@ -419,7 +419,7 @@ const handleEdit = (row) => {
   }
 }
 
-// 切换门票状态
+// 切换行程状态
 const handleToggleStatus = async (row) => {
   const newStatus = row.status === 1 ? 0 : 1
   const statusText = newStatus === 1 ? '上架' : '下架'
@@ -428,32 +428,32 @@ const handleToggleStatus = async (row) => {
     await request.put(`/ticket/${row.id}`, {
       status: newStatus
     }, {
-      successMsg: `门票${statusText}成功`,
+      successMsg: `行程${statusText}成功`,
       onSuccess: () => {
         row.status = newStatus
       }
     })
   } catch (error) {
-    console.error(`门票${statusText}失败:`, error)
+    console.error(`行程${statusText}失败:`, error)
   }
 }
 
-// 删除门票
+// 删除行程
 const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定要删除门票"${row.ticketName}"吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除行程"${row.ticketName}"吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     try {
       await request.delete(`/ticket/${row.id}`, {
-        successMsg: '门票删除成功',
+        successMsg: '行程删除成功',
         onSuccess: () => {
           fetchTickets()
         }
       })
     } catch (error) {
-      console.error('删除门票失败:', error)
+      console.error('删除行程失败:', error)
     }
   }).catch(() => {})
 }
@@ -484,18 +484,18 @@ const submitForm = async () => {
       
       try {
         if (isEdit.value) {
-          // 更新门票
+          // 更新行程
           await request.put(`/ticket/${ticketForm.id}`, ticketForm, {
-            successMsg: '门票更新成功',
+            successMsg: '行程更新成功',
             onSuccess: () => {
               dialogVisible.value = false
               fetchTickets()
             }
           })
         } else {
-          // 添加门票
+          // 添加行程
           await request.post('/ticket', ticketForm, {
-            successMsg: '门票添加成功',
+            successMsg: '行程添加成功',
             onSuccess: () => {
               dialogVisible.value = false
               fetchTickets()
@@ -503,7 +503,7 @@ const submitForm = async () => {
           })
         }
       } catch (error) {
-        console.error(isEdit.value ? '更新门票失败:' : '添加门票失败:', error)
+        console.error(isEdit.value ? '更新行程失败:' : '添加行程失败:', error)
       } finally {
         formLoading.value = false
       }
@@ -518,7 +518,7 @@ const getScenicSpotName = (scenicId) => {
   return scenic ? scenic.name : '-'
 }
 
-// 页面加载时获取门票列表和景点数据
+// 页面加载时获取行程列表和景点数据
 onMounted(() => {
   fetchTickets()
   // 预加载所有景点数据

@@ -7,7 +7,7 @@
     >
       <template #extra>
         <el-button type="primary" @click="goToOrders">查看我的订单</el-button>
-        <el-button @click="goToTickets">继续浏览门票</el-button>
+        <el-button @click="goToTickets">继续浏览行程</el-button>
       </template>
     </el-result>
   </div>

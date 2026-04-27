@@ -854,29 +854,17 @@ $border: #e9ecef;
 .feature-tag {
   display: inline-flex;
   align-items: center;
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid transparent;
+  padding: 2px 10px;
+  font-size: 11px;
+  color: #f60;
+  background: #fff5f0;
+  border-radius: 12px;
+  border: 1px solid #ffe0c0;
   transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 3px;
-    height: 100%;
-    background: currentColor;
-    opacity: 0.8;
-  }
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 }
 

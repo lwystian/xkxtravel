@@ -113,7 +113,7 @@ const frontendRoutes = [
         path: 'accommodation',
         name: 'AccommodationList',
         component: () => import('@/views/frontend/accommodation/index.vue'),
-        meta: { title: '周边住宿' }
+        meta: { title: '住宿' }
       },
       {
         path: 'accommodation/:id',

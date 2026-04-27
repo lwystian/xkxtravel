@@ -283,8 +283,35 @@
 
             <el-menu-item index="/accommodation">
               <el-icon><House /></el-icon>
-              <span>周边住宿</span>
+              <span>住宿</span>
             </el-menu-item>
+
+            <el-sub-menu index="/around">
+              <template #title>
+                <el-icon><Place /></el-icon>
+                <span>周边游</span>
+              </template>
+              <el-menu-item-group>
+                <template #title>选择出游天数</template>
+                <el-menu-item @click="goToAroundTour('1')">一日游</el-menu-item>
+                <el-menu-item @click="goToAroundTour('2')">二日游</el-menu-item>
+                <el-menu-item @click="goToAroundTour('3')">三日游</el-menu-item>
+                <el-menu-item @click="goToAroundTour('4')">四日游</el-menu-item>
+                <el-menu-item @click="goToAroundTour('5')">五日游</el-menu-item>
+              </el-menu-item-group>
+            </el-sub-menu>
+
+            <el-sub-menu index="/cruise">
+              <template #title>
+                <el-icon><Ship /></el-icon>
+                <span>邮轮出行</span>
+              </template>
+              <el-menu-item-group>
+                <template #title>选择邮轮类型</template>
+                <el-menu-item @click="goToCruise('sanyan')">三峡邮轮</el-menu-item>
+                <el-menu-item @click="goToCruise('xisha')">西沙邮轮</el-menu-item>
+              </el-menu-item-group>
+            </el-sub-menu>
 
             <el-menu-item index="/tickets">
               <el-icon><Ticket /></el-icon>
@@ -328,6 +355,7 @@ import {
   Tickets,
   House,
   Place,
+  Ship,
   ArrowDown,
   Location,
   Search,
@@ -342,27 +370,26 @@ const route = useRoute()
 const baseAPI = process.env.VUE_APP_BASE_API || '/api'
 
 // 位置相关
-const currentCity = ref('杭州')
+const currentCity = ref('重庆')
 const showWechatQR = ref(false)
 
 const cityList = ref([
-  { code: '330100', name: '杭州' },
+  { code: '500000', name: '重庆' },
+  { code: '420500', name: '宜昌' },
+  { code: '460100', name: '海口' },
+  { code: '460200', name: '三亚' },
+  { code: '510100', name: '成都' },
+  { code: '500100', name: '万州' },
+  { code: '500200', name: '涪陵' },
+  { code: '421200', name: '恩施' },
+  { code: '430100', name: '长沙' },
+  { code: '520100', name: '贵阳' },
+  { code: '530100', name: '昆明' },
   { code: '310100', name: '上海' },
   { code: '110000', name: '北京' },
   { code: '440100', name: '广州' },
   { code: '440300', name: '深圳' },
-  { code: '330200', name: '宁波' },
-  { code: '330500', name: '嘉兴' },
-  { code: '330600', name: '绍兴' },
-  { code: '330700', name: '金华' },
-  { code: '330800', name: '衢州' },
-  { code: '330900', name: '舟山' },
-  { code: '331000', name: '台州' },
-  { code: '331100', name: '丽水' },
-  { code: '330300', name: '温州' },
-  { code: '320500', name: '苏州' },
-  { code: '320100', name: '南京' },
-  { code: '330400', name: '湖州' }
+  { code: '320100', name: '南京' }
 ])
 
 // 搜索相关变量
@@ -402,6 +429,7 @@ const activeMenuIndex = computed(() => {
   if (path.startsWith('/scenic')) return '/scenic'
   if (path.startsWith('/guide')) return '/guide'
   if (path.startsWith('/accommodation')) return '/accommodation'
+  if (path.startsWith('/around')) return '/around'
   if (path.startsWith('/tickets') || path.startsWith('/ticket/booking')) return '/tickets'
   return '/'
 })
@@ -429,6 +457,30 @@ const handleLocationChange = (cityCode) => {
     currentCity.value = city.name
     ElMessage.success(`已切换到${city.name}`)
   }
+}
+
+// 城市名到代码的映射
+const cityNameToCode = {
+  '重庆': 'chongqing', '成都': 'chengdu', '昆明': 'kunming', '贵阳': 'guiyang',
+  '三亚': 'sanya', '北京': 'beijing', '上海': 'shanghai', '长沙': 'changsha',
+  '宜昌': 'yichang', '杭州': 'hangzhou', '广州': 'guangzhou', '深圳': 'shenzhen',
+  '宁波': 'ningbo', '嘉兴': 'jiaxing', '绍兴': 'shaoxing', '金华': 'jinhua',
+  '衢州': 'quzhou', '舟山': 'zhoushan', '台州': 'taizhou', '丽水': 'lishui',
+  '温州': 'wenzhou', '苏州': 'suzhou', '南京': 'nanjing', '湖州': 'huzhou',
+  '海口': 'haikou', '万州': 'wanzhou', '涪陵': 'fuling', '恩施': 'enshi'
+}
+
+// 周边游跳转 - 使用精确天数
+const goToAroundTour = (days) => {
+  const cityCode = cityNameToCode[currentCity.value] || 'chongqing'
+  // 周边游直接传精确天数
+  router.push(`/tickets?tourType=around&city=${cityCode}&days=${days}`)
+}
+
+// 邮轮出行跳转 - 三峡/西沙作为目的地筛选
+const goToCruise = (cruiseType) => {
+  // cruiseType 直接作为目的地值
+  router.push(`/tickets?tourType=cruise&destination=${cruiseType}`)
 }
 
 // 搜索类别变更
@@ -709,24 +761,67 @@ const handleQRCodeError = (e) => {
 
 // 通过IP获取位置（可选功能）
 const fetchLocationByIP = async () => {
-  try {
-    // 使用免费的IP定位API
-    const response = await fetch('https://ipapi.co/json/')
-    if (response.ok) {
-      const data = await response.json()
-      // 尝试匹配城市
-      const cityName = data.city || ''
-      const matchedCity = cityList.value.find(c =>
-        c.name.includes(cityName) || cityName.includes(c.name)
-      )
-      if (matchedCity) {
-        currentCity.value = matchedCity.name
+  // 尝试多个IP定位API
+  const apis = [
+    'https://ipapi.co/json/',
+    'https://ip-api.com/json/',
+    'https://whois.pconline.com.cn/ipJson.jsp?json=true'
+  ]
+  
+  for (const api of apis) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000)
+      
+      let url = api
+      let data
+      
+      if (api.includes('pconline')) {
+        // 太平洋网络IP查询（国内API，返回gbk编码）
+        url = 'https://whois.pconline.com.cn/ipJson.jsp?json=true'
+        const response = await fetch(url, { 
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' }
+        })
+        clearTimeout(timeoutId)
+        if (response.ok) {
+          const text = await response.text()
+          // 处理gbk编码的响应
+          const decoder = new TextDecoder('gbk')
+          const uint8Array = new Uint8Array([...text].map(c => c.charCodeAt(0)))
+          data = JSON.parse(decoder.decode(uint8Array))
+          const cityName = data.city || ''
+          const matchedCity = cityList.value.find(c =>
+            c.name.includes(cityName) || cityName.includes(c.name)
+          )
+          if (matchedCity) {
+            currentCity.value = matchedCity.name
+            return
+          }
+        }
+      } else {
+        const response = await fetch(url, { signal: controller.signal })
+        clearTimeout(timeoutId)
+        if (response.ok) {
+          data = await response.json()
+          const cityName = data.city || data.cityName || ''
+          const matchedCity = cityList.value.find(c =>
+            c.name.includes(cityName) || cityName.includes(c.name)
+          )
+          if (matchedCity) {
+            currentCity.value = matchedCity.name
+            return
+          }
+        }
       }
+    } catch (error) {
+      console.log(`IP定位API ${api} 请求失败:`, error.message)
+      continue
     }
-  } catch (error) {
-    // IP定位失败时使用默认城市
-    console.log('IP定位失败，使用默认城市')
   }
+  
+  // 所有API都失败时使用默认城市
+  console.log('IP定位失败，使用默认城市杭州')
 }
 
 const handleCommand = (command) => {
@@ -1271,7 +1366,8 @@ onMounted(() => {
   border-bottom: none;
   background-color: transparent;
 
-  :deep(.el-menu-item) {
+  :deep(.el-menu-item),
+  :deep(.el-sub-menu__title) {
     color: #333;
     font-size: 16px;
     height: 50px;
@@ -1292,6 +1388,11 @@ onMounted(() => {
     &:hover .el-icon {
       color: #e94560;
     }
+  }
+
+  // 隐藏sub-menu的箭头
+  :deep(.el-sub-menu__icon-arrow) {
+    display: none;
   }
 }
 

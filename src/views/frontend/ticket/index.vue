@@ -174,6 +174,10 @@
           <div class="active-filters-bar" v-if="hasActiveFilters">
             <span class="active-label">已选条件：</span>
             <div class="active-tags">
+              <span v-if="activeFilters.tourType" class="active-tag">
+                {{ getTourTypeLabel(activeFilters.tourType) }}
+                <el-icon @click="removeFilter('tourType')"><Close /></el-icon>
+              </span>
               <span v-if="activeFilters.city" class="active-tag">
                 {{ getCityLabel(activeFilters.city) }}
                 <el-icon @click="removeFilter('city')"><Close /></el-icon>
@@ -454,7 +458,7 @@ const availableFilters = ref({
   themes: []
 })
 
-// 完整的行程列表（静态数据）
+// 完整的行程列表（从后端获取）
 const fullTicketsList = ref([])
 
 // 当前搜索结果列表
@@ -463,573 +467,8 @@ const currentSearchResults = ref([])
 // 总数量（用于全部标签显示）
 const totalCount = computed(() => currentSearchResults.value.length)
 
-// =============================================
-// Mock 数据（增加了 city 和 month 字段）
-// =============================================
-const mockTicketsList = [
-  {
-    id: 1,
-    title: '极道·小鹿池 | 金佛山强度穿越，重庆毕业线',
-    subtitle: '重庆出发',
-    mainImage: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=300&fit=crop',
-    tag: '跟团游·户外徒步',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 1,
-    month: 5,
-    minPrice: 158,
-    starRating: 4.9,
-    recommendDate: '2026-05-05 周一',
-    moreDates: '05-10、05-12、05-17、05-21、06-01',
-    feature: '18km累计爬升1200米，龙岩城-小鹿池-石人峰，新人勿入！！！',
-    tags: ['强度穿越', '山城经典', '林海秘境'],
-    enrolledCount: 253,
-    theme: 'hiking'
-  },
-  {
-    id: 2,
-    title: '南海邮轮·南海之梦·三亚-三沙-三亚·3天2晚',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?w=400&h=300&fit=crop',
-    tag: '邮轮船票·西沙群岛航线',
-    tourType: 'cruise',
-    city: 'sanya',
-    destination: 'xisha',
-    days: 3,
-    month: 5,
-    minPrice: 4680,
-    starRating: 4.8,
-    recommendDate: '2026-05-01 周五',
-    moreDates: '05-13、05-21、05-25、05-29',
-    feature: '"五一特惠"预定南海之梦号邮轮5月1日航次，16岁以下青少年儿童入...',
-    tags: ['邮轮', '海岛', '西沙群岛'],
-    enrolledCount: 128,
-    theme: 'scenic'
-  },
-  {
-    id: 3,
-    title: '海南海峡·祥龙岛·三亚-三沙-三亚·3天2晚',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?w=400&h=300&fit=crop',
-    tag: '邮轮船票·西沙群岛航线',
-    tourType: 'cruise',
-    city: 'sanya',
-    destination: 'xisha',
-    days: 3,
-    month: 5,
-    minPrice: 5490,
-    starRating: 4.7,
-    recommendDate: '2026-05-23 周六',
-    moreDates: '04-28、05-03、05-07、05-11、05-15、05-19、05-27',
-    feature: '官方代理【咨询客服享优惠】圆梦西沙 登赵述岛升国旗唱国歌 父母...',
-    tags: ['邮轮', '官方代理', '西沙'],
-    enrolledCount: 89,
-    theme: 'scenic'
-  },
-  {
-    id: 4,
-    title: '峨眉山·乐山大佛·都江堰·青城山·4天3晚深度游',
-    subtitle: '成都出发·纯玩无购物',
-    mainImage: 'https://images.unsplash.com/photo-1554048612-b6a482bc67a4?w=400&h=300&fit=crop',
-    tag: '跟团游·文化古迹',
-    city: 'chengdu',
-    destination: 'sichuan',
-    days: 4,
-    month: 5,
-    minPrice: 1280,
-    starRating: 4.6,
-    recommendDate: '2026-05-15 周四',
-    moreDates: '05-22、05-29、06-05',
-    feature: '深度游览四川四大景点，含全程星级住宿，金牌导游讲解',
-    tags: ['佛教圣地', '世界遗产', '纯玩'],
-    enrolledCount: 156,
-    theme: 'cultural'
-  },
-  {
-    id: 5,
-    title: '稻城亚丁·色达·新都桥·7天6晚摄影之旅',
-    subtitle: '成都出发·摄影团·小团出行',
-    mainImage: 'https://images.unsplash.com/photo-1516483638261-f4dbaf03663a?w=400&h=300&fit=crop',
-    tag: '跟团游·摄影专线',
-    city: 'chengdu',
-    destination: 'sichuan',
-    days: 7,
-    month: 6,
-    minPrice: 3280,
-    starRating: 4.9,
-    recommendDate: '2026-05-20 周三',
-    moreDates: '06-03、06-17、07-01',
-    feature: '摄影领队全程跟拍，独家机位，邂逅"蓝色星球上最后一片净土"',
-    tags: ['摄影天堂', '高原风光', '小团'],
-    enrolledCount: 67,
-    theme: 'scenic'
-  },
-  {
-    id: 6,
-    title: '大理·丽江·泸沽湖·6天5晚休闲游',
-    subtitle: '昆明出发·丽江散团',
-    mainImage: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=300&fit=crop',
-    tag: '跟团游·休闲度假',
-    city: 'kunming',
-    destination: 'yunnan',
-    days: 6,
-    month: 5,
-    minPrice: 1980,
-    starRating: 4.7,
-    recommendDate: '2026-05-18 周一',
-    moreDates: '05-25、06-08、06-22',
-    feature: '慢游云南经典环线，入住特色客栈，含泸沽湖猪槽船体验',
-    tags: ['风花雪月', '慢生活', '网红打卡'],
-    enrolledCount: 203,
-    theme: 'city'
-  },
-  {
-    id: 7,
-    title: '西江千户苗寨·黄果树瀑布·荔波小七孔·5天4晚',
-    subtitle: '贵阳出发·深度贵州',
-    mainImage: 'https://images.unsplash.com/photo-1528127269322-5398015f1a5b?w=400&h=300&fit=crop',
-    tag: '跟团游·自然风光',
-    city: 'guiyang',
-    destination: 'guizhou',
-    days: 5,
-    month: 6,
-    minPrice: 1680,
-    starRating: 4.8,
-    recommendDate: '2026-05-12 周二',
-    moreDates: '05-19、05-26、06-02',
-    feature: '含西江苗寨长桌宴，黄果树VIP通道，荔波小七孔精华景点全覆盖',
-    tags: ['瀑布', '苗寨', '喀斯特'],
-    enrolledCount: 142,
-    theme: 'scenic'
-  },
-  {
-    id: 8,
-    title: '西沙群岛·全富岛·银屿岛·4天3晚圆梦之旅',
-    subtitle: '三亚出发·南海之梦号',
-    mainImage: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?w=400&h=300&fit=crop',
-    tag: '邮轮船票·西沙群岛航线',
-    tourType: 'cruise',
-    city: 'sanya',
-    destination: 'xisha',
-    days: 4,
-    month: 6,
-    minPrice: 5980,
-    starRating: 4.9,
-    recommendDate: '2026-06-01 周一',
-    moreDates: '06-08、06-15、06-22',
-    feature: '【西沙圆梦】登全富岛升国旗，银屿岛浮潜，体验西沙纯净海域',
-    tags: ['西沙群岛', '邮轮', '升旗仪式'],
-    enrolledCount: 234,
-    theme: 'scenic'
-  },
-  // ==================== 三峡邮轮 ====================
-  {
-    id: 10,
-    title: '长江三峡·世纪荣耀号·重庆-宜昌·3天2晚',
-    subtitle: '重庆朝天门码头登船',
-    mainImage: 'https://images.unsplash.com/photo-1537531383496-f4749b85ceb3?w=400&h=300&fit=crop',
-    tag: '邮轮船票·三峡航线',
-    tourType: 'cruise',
-    city: 'chongqing',
-    destination: 'sanyan',
-    days: 3,
-    month: 5,
-    minPrice: 1680,
-    starRating: 4.8,
-    recommendDate: '2026-05-15 周四',
-    moreDates: '05-22、05-29、06-05、06-12',
-    feature: '乘坐世纪荣耀号五星豪华游轮，畅游三峡精华段，含船上自助餐',
-    tags: ['豪华游轮', '三峡风光', '五星服务'],
-    enrolledCount: 312,
-    theme: 'scenic'
-  },
-  {
-    id: 11,
-    title: '长江三峡·华夏神女号·重庆-宜昌·4天3晚',
-    subtitle: '重庆朝天门码头登船',
-    mainImage: 'https://images.unsplash.com/photo-1537531383496-f4749b85ceb3?w=400&h=300&fit=crop',
-    tag: '邮轮船票·三峡航线',
-    tourType: 'cruise',
-    city: 'chongqing',
-    destination: 'sanyan',
-    days: 4,
-    month: 6,
-    minPrice: 2280,
-    starRating: 4.9,
-    recommendDate: '2026-06-10 周二',
-    moreDates: '06-17、06-24、07-01',
-    feature: '华夏神女号主题游轮，含丰都鬼城、白帝城、瞿塘峡、巫峡、西陵峡',
-    tags: ['主题游轮', '三峡全景', '精华景点'],
-    enrolledCount: 256,
-    theme: 'scenic'
-  },
-  {
-    id: 12,
-    title: '长江三峡·美维凯珍号·宜昌-重庆·5天4晚',
-    subtitle: '宜昌港登船',
-    mainImage: 'https://images.unsplash.com/photo-1537531383496-f4749b85ceb3?w=400&h=300&fit=crop',
-    tag: '邮轮船票·三峡航线',
-    tourType: 'cruise',
-    city: 'yichang',
-    destination: 'sanyan',
-    days: 5,
-    month: 7,
-    minPrice: 3180,
-    starRating: 4.7,
-    recommendDate: '2026-07-05 周六',
-    moreDates: '07-12、07-19、07-26',
-    feature: '逆流而上深度游三峡，含三峡大坝、升船机体验、神农溪漂流',
-    tags: ['逆流深度', '升船机', '神农溪'],
-    enrolledCount: 178,
-    theme: 'scenic'
-  },
-  {
-    id: 9,
-    title: '重庆武隆·天生三桥·仙女山·2天1晚',
-    subtitle: '重庆出发·自然奇观',
-    mainImage: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=300&fit=crop',
-    tag: '跟团游·自然风光',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 2,
-    month: 5,
-    minPrice: 398,
-    starRating: 4.7,
-    recommendDate: '2026-05-14 周四',
-    moreDates: '05-21、05-28、06-04',
-    feature: '《变形金刚4》取景地，天生三桥震撼景观，仙女山草原漫步',
-    tags: ['武隆', '天生三桥', '仙女山'],
-    enrolledCount: 178,
-    theme: 'scenic'
-  },
-  {
-    id: 10,
-    title: '张家界·天门山·凤凰古城·5天4晚',
-    subtitle: '长沙出发',
-    mainImage: 'https://images.unsplash.com/photo-1516307361326-6a09d2adf6d0?w=400&h=300&fit=crop',
-    tag: '跟团游·自然风光',
-    city: 'changsha',
-    destination: 'hunan',
-    days: 5,
-    month: 7,
-    minPrice: 1880,
-    starRating: 4.8,
-    recommendDate: '2026-07-10 周五',
-    moreDates: '07-17、07-24、07-31',
-    feature: '张家界核心景区+玻璃桥+凤凰古城夜景',
-    tags: ['张家界', '凤凰古城', '玻璃桥'],
-    enrolledCount: 112,
-    theme: 'scenic'
-  },
-  // ==================== 重庆周边游 ====================
-  {
-    id: 101,
-    title: '重庆一日游 | 洪崖洞、解放碑、长江索道',
-    subtitle: '重庆出发',
-    mainImage: 'https://images.unsplash.com/photo-1548611716-b3013a5efb29?w=400&h=300&fit=crop',
-    tag: '周边游·一日游',
-    tourType: 'around',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 1,
-    month: 5,
-    minPrice: 168,
-    starRating: 4.6,
-    recommendDate: '2026-05-10 周六',
-    moreDates: '每天发团',
-    feature: '打卡重庆网红景点，解放碑步行街、洪崖洞夜景、长江索道观江景',
-    tags: ['网红打卡', '一日游', '纯玩'],
-    enrolledCount: 325,
-    theme: 'city'
-  },
-  {
-    id: 102,
-    title: '重庆二日游 | 武隆天生三桥、仙女山',
-    subtitle: '重庆出发',
-    mainImage: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=300&fit=crop',
-    tag: '周边游·二日游',
-    tourType: 'around',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 2,
-    month: 5,
-    minPrice: 458,
-    starRating: 4.8,
-    recommendDate: '2026-05-11 周日',
-    moreDates: '每周六发团',
-    feature: '探秘世界自然遗产天生三桥，畅游仙女山国家森林公园',
-    tags: ['世界遗产', '自然奇观', '避暑'],
-    enrolledCount: 256,
-    theme: 'scenic'
-  },
-  {
-    id: 103,
-    title: '重庆三日游 | 大足石刻、黑山谷、龙鳞石海',
-    subtitle: '重庆出发',
-    mainImage: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=400&h=300&fit=crop',
-    tag: '周边游·三日游',
-    tourType: 'around',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 3,
-    month: 5,
-    minPrice: 688,
-    starRating: 4.7,
-    recommendDate: '2026-05-16 周五',
-    moreDates: '05-23、05-30',
-    feature: '世界文化遗产大足石刻，巴渝古韵自然风光三日深度游',
-    tags: ['世界遗产', '石刻艺术', '深度游'],
-    enrolledCount: 189,
-    theme: 'cultural'
-  },
-  {
-    id: 104,
-    title: '重庆四日游 | 三峡博物馆、白帝城、夔门、巫山',
-    subtitle: '重庆出发',
-    mainImage: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
-    tag: '周边游·四日游',
-    tourType: 'around',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 4,
-    month: 6,
-    minPrice: 898,
-    starRating: 4.9,
-    recommendDate: '2026-06-05 周四',
-    moreDates: '06-12、06-19',
-    feature: '游览三峡起点白帝城，夔门雄姿，巫山小三峡画廊',
-    tags: ['三峡风光', '诗词文化', '船游'],
-    enrolledCount: 145,
-    theme: 'scenic'
-  },
-  {
-    id: 105,
-    title: '重庆五日游 | 武隆、大足、涪陵816、丰都鬼城',
-    subtitle: '重庆出发',
-    mainImage: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400&h=300&fit=crop',
-    tag: '周边游·五日游',
-    tourType: 'around',
-    city: 'chongqing',
-    destination: 'chongqing',
-    days: 5,
-    month: 6,
-    minPrice: 1280,
-    starRating: 4.8,
-    recommendDate: '2026-06-08 周一',
-    moreDates: '06-15、06-22',
-    feature: '全景重庆五日深度游，涵盖世界遗产、三线遗迹、鬼城文化',
-    tags: ['全景重庆', '文化之旅', '深度游'],
-    enrolledCount: 98,
-    theme: 'cultural'
-  },
-  // ==================== 宜昌周边游 ====================
-  {
-    id: 201,
-    title: '宜昌一日游 | 三峡大坝、坛子岭',
-    subtitle: '宜昌出发',
-    mainImage: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=400&h=300&fit=crop',
-    tag: '周边游·一日游',
-    tourType: 'around',
-    city: 'yichang',
-    destination: 'hubei',
-    days: 1,
-    month: 5,
-    minPrice: 198,
-    starRating: 4.7,
-    recommendDate: '2026-05-10 周六',
-    moreDates: '每天发团',
-    feature: '参观当今世界最大的水利发电工程，三峡大坝坛子岭观景区',
-    tags: ['大国重器', '水利工程', '纯玩'],
-    enrolledCount: 278,
-    theme: 'scenic'
-  },
-  {
-    id: 202,
-    title: '宜昌二日游 | 三峡人家、西陵峡',
-    subtitle: '宜昌出发',
-    mainImage: 'https://images.unsplash.com/photo-1548611716-b3013a5efb29?w=400&h=300&fit=crop',
-    tag: '周边游·二日游',
-    tourType: 'around',
-    city: 'yichang',
-    destination: 'hubei',
-    days: 2,
-    month: 5,
-    minPrice: 428,
-    starRating: 4.6,
-    recommendDate: '2026-05-11 周日',
-    moreDates: '每周六发团',
-    feature: '畅游三峡人家景区，品味峡江民俗风情，观赏西陵峡绝美风光',
-    tags: ['峡江风情', '民俗体验', '摄影'],
-    enrolledCount: 196,
-    theme: 'scenic'
-  },
-  {
-    id: 203,
-    title: '宜昌三日游 | 神农架、大九湖',
-    subtitle: '宜昌出发',
-    mainImage: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=300&fit=crop',
-    tag: '周边游·三日游',
-    tourType: 'around',
-    city: 'yichang',
-    destination: 'hubei',
-    days: 3,
-    month: 5,
-    minPrice: 798,
-    starRating: 4.9,
-    recommendDate: '2026-05-16 周五',
-    moreDates: '05-23、05-30',
-    feature: '探访华中屋脊神农架，漫步大九湖高山湿地，感受原始生态之美',
-    tags: ['神农架', '湿地风光', '洗肺之旅'],
-    enrolledCount: 167,
-    theme: 'scenic'
-  },
-  {
-    id: 204,
-    title: '宜昌四日游 | 神农架、三峡大坝、巫山',
-    subtitle: '宜昌出发',
-    mainImage: 'https://images.unsplash.com/photo-1516483638261-f4dbaf03663a?w=400&h=300&fit=crop',
-    tag: '周边游·四日游',
-    tourType: 'around',
-    city: 'yichang',
-    destination: 'hubei',
-    days: 4,
-    month: 6,
-    minPrice: 1098,
-    starRating: 4.8,
-    recommendDate: '2026-06-05 周四',
-    moreDates: '06-12、06-19',
-    feature: '神农架深度游+三峡大坝+巫山小三峡，四日全景峡江之旅',
-    tags: ['全景三峡', '神农架', '深度游'],
-    enrolledCount: 123,
-    theme: 'scenic'
-  },
-  {
-    id: 205,
-    title: '宜昌五日游 | 神农架、大九湖、三峡人家、恩施大峡谷',
-    subtitle: '宜昌出发',
-    mainImage: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
-    tag: '周边游·五日游',
-    tourType: 'around',
-    city: 'yichang',
-    destination: 'hubei',
-    days: 5,
-    month: 6,
-    minPrice: 1580,
-    starRating: 4.9,
-    recommendDate: '2026-06-08 周一',
-    moreDates: '06-15、06-22',
-    feature: '宜昌、恩施全景五日游，涵盖神农架、大峡谷两大核心景区',
-    tags: ['全景鄂西', '世界遗产', '精华游'],
-    enrolledCount: 89,
-    theme: 'scenic'
-  },
-  // ==================== 海南周边游 ====================
-  {
-    id: 301,
-    title: '三亚一日游 | 天涯海角、鹿回头公园',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1559628233-100c798642d4?w=400&h=300&fit=crop',
-    tag: '周边游·一日游',
-    tourType: 'around',
-    city: 'sanya',
-    destination: 'hainan',
-    days: 1,
-    month: 5,
-    minPrice: 188,
-    starRating: 4.5,
-    recommendDate: '2026-05-10 周六',
-    moreDates: '每天发团',
-    feature: '打卡海南标志性景点，天涯海角浪漫打卡，鹿回头俯瞰三亚全景',
-    tags: ['浪漫打卡', '海滨风光', '纯玩'],
-    enrolledCount: 456,
-    theme: 'scenic'
-  },
-  {
-    id: 302,
-    title: '三亚二日游 | 蜈支洲岛、南山寺',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
-    tag: '周边游·二日游',
-    tourType: 'around',
-    city: 'sanya',
-    destination: 'hainan',
-    days: 2,
-    month: 5,
-    minPrice: 598,
-    starRating: 4.8,
-    recommendDate: '2026-05-11 周日',
-    moreDates: '每周六发团',
-    feature: '中国版马尔代夫蜈支洲岛，佛教圣地南山寺祈福两日游',
-    tags: ['海岛度假', '佛教祈福', '休闲游'],
-    enrolledCount: 378,
-    theme: 'scenic'
-  },
-  {
-    id: 303,
-    title: '三亚三日游 | 亚龙湾、呀诺达、分界洲岛',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400&h=300&fit=crop',
-    tag: '周边游·三日游',
-    tourType: 'around',
-    city: 'sanya',
-    destination: 'hainan',
-    days: 3,
-    month: 5,
-    minPrice: 888,
-    starRating: 4.7,
-    recommendDate: '2026-05-16 周五',
-    moreDates: '05-23、05-30',
-    feature: '海南精华三日游，亚龙湾海滨、呀诺达雨林、分界洲岛海景全覆盖',
-    tags: ['雨林探秘', '海滨度假', '精华游'],
-    enrolledCount: 267,
-    theme: 'scenic'
-  },
-  {
-    id: 304,
-    title: '三亚四日游 | 亚特兰蒂斯、槟榔谷、三亚千古情',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop',
-    tag: '周边游·四日游',
-    tourType: 'around',
-    city: 'sanya',
-    destination: 'hainan',
-    days: 4,
-    month: 6,
-    minPrice: 1388,
-    starRating: 4.9,
-    recommendDate: '2026-06-05 周四',
-    moreDates: '06-12、06-19',
-    feature: '高端度假四日游，亚特兰蒂斯水族馆、槟榔谷黎苗文化、三亚千古情',
-    tags: ['高端度假', '文化体验', '亲子游'],
-    enrolledCount: 189,
-    theme: 'family'
-  },
-  {
-    id: 305,
-    title: '海南五日游 | 海口、博鳌、三亚、西沙群岛',
-    subtitle: '三亚出发',
-    mainImage: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?w=400&h=300&fit=crop',
-    tag: '周边游·五日游',
-    tourType: 'around',
-    city: 'sanya',
-    destination: 'hainan',
-    days: 5,
-    month: 6,
-    minPrice: 5980,
-    starRating: 5.0,
-    recommendDate: '2026-06-08 周一',
-    moreDates: '06-15、06-22',
-    feature: '海南环岛+西沙群岛五日游，圆梦西沙，踏上祖国最南端的海岛',
-    tags: ['西沙群岛', '环岛游', '圆梦之旅'],
-    enrolledCount: 156,
-    theme: 'scenic'
-  }
-]
-
-// 推荐列表（精选几个热门）
-const recommendList = computed(() => {
-  return mockTicketsList.slice(0, 4)
-})
+// 数据加载完成标志
+const isDataLoaded = ref(false)
 
 // =============================================
 // 辅助函数：获取标签显示名称
@@ -1043,76 +482,9 @@ const getThemeLabel = (value) => themeMap[value] || value
 const getTourTypeLabel = (value) => tourTypeMap[value] || value
 
 // =============================================
-// 核心函数：根据关键词和筛选条件搜索
+// 辅助函数：匹配逻辑
 // =============================================
-const performSearch = () => {
-  loading.value = true
-  
-  // 模拟异步搜索（实际应为API调用）
-  setTimeout(() => {
-    let results = [...fullTicketsList.value]
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    
-    // 1. 关键词筛选
-    if (keyword) {
-      results = results.filter(item =>
-        item.title.toLowerCase().includes(keyword) ||
-        item.subtitle.toLowerCase().includes(keyword) ||
-        item.tags.some(tag => tag.toLowerCase().includes(keyword)) ||
-        (item.destination && destinationMap[item.destination]?.includes(keyword)) ||
-        (item.city && cityMap[item.city]?.includes(keyword))
-      )
-    }
-    
-    // 2. 应用当前活跃的筛选条件
-    if (activeFilters.value.tourType) {
-      results = results.filter(item => item.tourType === activeFilters.value.tourType)
-    }
-    if (activeFilters.value.city) {
-      results = results.filter(item => item.city === activeFilters.value.city)
-    }
-    if (activeFilters.value.destination) {
-      results = results.filter(item => item.destination === activeFilters.value.destination)
-    }
-    if (activeFilters.value.days) {
-      // 根据行程类型选择匹配方式
-      if (activeFilters.value.tourType === 'around') {
-        // 周边游：精确天数匹配
-        results = results.filter(item => item.days === parseInt(activeFilters.value.days))
-      } else {
-        // 普通行程：范围匹配
-        results = results.filter(item => matchDaysRange(item.days, activeFilters.value.days))
-      }
-    }
-    if (activeFilters.value.month) {
-      results = results.filter(item => item.month === parseInt(activeFilters.value.month))
-    }
-    if (activeFilters.value.priceRange) {
-      results = results.filter(item => matchPriceRange(item.minPrice, activeFilters.value.priceRange))
-    }
-    if (activeFilters.value.theme) {
-      results = results.filter(item => item.theme === activeFilters.value.theme)
-    }
-
-    currentSearchResults.value = results
-    
-    // 3. 基于搜索结果生成可用的筛选选项
-    generateAvailableFilters(results)
-    
-    hasSearched.value = true
-    currentPage.value = 1
-    loading.value = false
-    
-    // 搜索后页面往下滑动一小段距离
-    setTimeout(() => {
-      document.documentElement.scrollTop = 220
-    }, 500)
-  }, 200)
-}
-
 // 天数匹配函数 - 同时支持精确天数和范围格式
-// 周边游传精确天数：'1', '2', '3', '4', '5'
-// 普通行程使用范围：'1-3', '4-6', '7-9', '10+'
 const matchDaysRange = (days, range) => {
   if (!range) return true
   
@@ -1145,6 +517,91 @@ const matchPriceRange = (price, range) => {
     case '2000+': return price > 2000
     default: return true
   }
+}
+
+// 根据天数获取天数区间
+const getDaysRangeFromDays = (days) => {
+  if (days <= 3) return '1-3'
+  if (days <= 6) return '4-6'
+  if (days <= 9) return '7-9'
+  return '10+'
+}
+
+// 根据价格获取价格区间
+const getPriceRangeFromPrice = (price) => {
+  if (price <= 500) return '0-500'
+  if (price <= 1000) return '500-1000'
+  if (price <= 2000) return '1000-2000'
+  return '2000+'
+}
+
+// =============================================
+// 核心函数：根据关键词和筛选条件搜索
+// =============================================
+const performSearch = () => {
+  if (!isDataLoaded.value) {
+    ElMessage.warning('数据加载中，请稍后再试')
+    return
+  }
+  
+  loading.value = true
+  
+  setTimeout(() => {
+    let results = [...fullTicketsList.value]
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    
+    // 1. 关键词筛选
+    if (keyword) {
+      results = results.filter(item =>
+        item.title.toLowerCase().includes(keyword) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(keyword)) ||
+        (item.tags && item.tags.some(tag => tag.toLowerCase().includes(keyword))) ||
+        (item.destination && destinationMap[item.destination]?.includes(keyword)) ||
+        (item.city && cityMap[item.city]?.includes(keyword))
+      )
+    }
+    
+    // 2. 应用当前活跃的筛选条件
+    if (activeFilters.value.tourType) {
+      results = results.filter(item => item.tourType === activeFilters.value.tourType)
+    }
+    if (activeFilters.value.city) {
+      results = results.filter(item => item.city === activeFilters.value.city)
+    }
+    if (activeFilters.value.destination) {
+      results = results.filter(item => item.destination === activeFilters.value.destination)
+    }
+    if (activeFilters.value.days) {
+      if (activeFilters.value.tourType === 'around') {
+        results = results.filter(item => item.days === parseInt(activeFilters.value.days))
+      } else {
+        results = results.filter(item => matchDaysRange(item.days, activeFilters.value.days))
+      }
+    }
+    if (activeFilters.value.month) {
+      results = results.filter(item => item.month === parseInt(activeFilters.value.month))
+    }
+    if (activeFilters.value.priceRange) {
+      results = results.filter(item => matchPriceRange(item.minPrice, activeFilters.value.priceRange))
+    }
+    if (activeFilters.value.theme) {
+      results = results.filter(item => item.theme === activeFilters.value.theme)
+    }
+
+    currentSearchResults.value = results
+    
+    // 3. 基于搜索结果生成可用的筛选选项
+    generateAvailableFilters(results)
+    
+    hasSearched.value = true
+    currentPage.value = 1
+    loading.value = false
+    
+    // 搜索后页面往下滑动一小段距离
+    setTimeout(() => {
+      window.scrollTo({ top: 220, behavior: 'smooth' })
+    }, 200)
+  }, 200)
 }
 
 // 基于搜索结果生成可用的筛选选项
@@ -1211,9 +668,7 @@ const generateAvailableFilters = (results) => {
     .map(([value, count]) => ({ value, label: destinationMap[value] || value, count }))
     .sort((a, b) => b.count - a.count)
   
-  // 天数选项：统一使用范围格式，所有行程类型都用范围筛选
   // 天数选项：根据行程类型显示不同格式
-  // 周边游显示精确天数（1天、2天...），普通行程显示范围（1-3天、4-6天...）
   if (activeFilters.value.tourType === 'around') {
     // 周边游：精确天数
     const exactDaysMap = new Map()
@@ -1256,22 +711,6 @@ const generateAvailableFilters = (results) => {
     .sort((a, b) => b.count - a.count)
 }
 
-// 根据天数获取天数区间
-const getDaysRangeFromDays = (days) => {
-  if (days <= 3) return '1-3'
-  if (days <= 6) return '4-6'
-  if (days <= 9) return '7-9'
-  return '10+'
-}
-
-// 根据价格获取价格区间
-const getPriceRangeFromPrice = (price) => {
-  if (price <= 500) return '0-500'
-  if (price <= 1000) return '500-1000'
-  if (price <= 2000) return '1000-2000'
-  return '2000+'
-}
-
 // =============================================
 // 计算属性
 // =============================================
@@ -1288,10 +727,10 @@ const filteredList = computed(() => {
       result.sort((a, b) => b.minPrice - a.minPrice)
       break
     case 'popular':
-      result.sort((a, b) => b.enrolledCount - a.enrolledCount)
+      result.sort((a, b) => (b.enrolledCount || 0) - (a.enrolledCount || 0))
       break
     default:
-      result.sort((a, b) => b.id - a.id)
+      result.sort((a, b) => (b.id || 0) - (a.id || 0))
       break
   }
   
@@ -1316,22 +755,37 @@ const hasActiveFilters = computed(() => {
          activeFilters.value.theme
 })
 
+// 推荐列表（从完整数据中取前4个）
+const recommendList = computed(() => {
+  if (fullTicketsList.value.length > 0) {
+    return fullTicketsList.value.slice(0, 4)
+  }
+  return []
+})
+
 // =============================================
 // 方法
 // =============================================
 
 // 格式化价格
 const formatPrice = (price) => {
+  if (!price) return '0'
   return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 // 跳转到详情页
 const goToDetail = (id) => {
-  router.push(`/ticket/booking/${id}`)
+  if (id) {
+    router.push(`/ticket/booking/${id}`)
+  }
 }
 
 // 执行搜索
 const executeSearch = () => {
+  if (!isDataLoaded.value) {
+    ElMessage.warning('数据加载中，请稍后再试')
+    return
+  }
   // 如果没有关键词且没有筛选条件，提示用户
   if (!searchKeyword.value.trim() && !hasActiveFilters.value) {
     ElMessage.warning('请输入搜索关键词或选择筛选条件')
@@ -1355,7 +809,7 @@ const toggleFilter = (type, value) => {
     // 否则选中新的
     activeFilters.value[type] = value
   }
-  // 重新执行搜索（在当前搜索结果基础上）
+  // 重新执行搜索
   performSearch()
 }
 
@@ -1400,35 +854,74 @@ const initFromUrl = () => {
   const daysParam = route.query.days
   const destinationParam = route.query.destination
 
+  let hasParams = false
+
   // 处理搜索关键词
   if (searchParam) {
     searchKeyword.value = decodeURIComponent(searchParam)
+    hasParams = true
   }
 
-  // 处理行程类型筛选（周边游/邮轮出行）
+  // 处理行程类型筛选
   if (tourTypeParam) {
     activeFilters.value.tourType = tourTypeParam
+    hasParams = true
   }
 
   // 处理出发城市筛选
   if (cityParam) {
     activeFilters.value.city = cityParam
+    hasParams = true
   }
 
-  // 处理天数筛选 - 直接使用原始值
+  // 处理天数筛选
   if (daysParam) {
     activeFilters.value.days = daysParam
+    hasParams = true
   }
 
   // 处理目的地筛选
   if (destinationParam) {
     activeFilters.value.destination = destinationParam
+    hasParams = true
   }
 
   // 如果有任何筛选条件，执行搜索
-  if (searchKeyword.value.trim() || tourTypeParam || cityParam || daysParam || destinationParam) {
+  if (hasParams && isDataLoaded.value) {
     hasSearched.value = true
     executeSearch()
+  }
+}
+
+// 从后端获取数据
+const fetchTickets = async () => {
+  loading.value = true
+  
+  try {
+    const { getTourList } = await import('@/api/tour')
+    const res = await getTourList()
+    
+    if (res && Array.isArray(res) && res.length > 0) {
+      // 处理后端返回的数据，将 tags 字符串转换为数组
+      fullTicketsList.value = res.map(item => ({
+        ...item,
+        tags: parseTags(item.tags)
+      }))
+    } else {
+      ElMessage.warning('暂无行程数据')
+      fullTicketsList.value = []
+    }
+  } catch (error) {
+    console.error('获取行程列表失败:', error)
+    ElMessage.error('获取行程数据失败，请稍后重试')
+    fullTicketsList.value = []
+  } finally {
+    loading.value = false
+    isDataLoaded.value = true
+    // 数据加载完成后，如果有URL参数则执行搜索
+    nextTick(() => {
+      initFromUrl()
+    })
   }
 }
 
@@ -1439,6 +932,8 @@ watch(sortType, () => {
 
 // 监听路由变化，当搜索参数改变时重新搜索
 watch(() => route.query, (query) => {
+  if (!isDataLoaded.value) return
+  
   const newSearch = query.search
   const newTourType = query.tourType
   const newCity = query.city
@@ -1478,39 +973,10 @@ watch(() => route.query, (query) => {
 }, { deep: true })
 
 // =============================================
-// 从后端获取数据
-// =============================================
-import { getTourList } from '@/api/tour'
-
-const fetchTickets = async () => {
-  loading.value = true
-  try {
-    await getTourList().then(res => {
-      if (res && Array.isArray(res)) {
-        // 处理后端返回的数据，将 tags 字符串转换为数组
-        fullTicketsList.value = res.map(item => ({
-          ...item,
-          tags: parseTags(item.tags)
-        }))
-      } else {
-        fullTicketsList.value = mockTicketsList
-      }
-    })
-  } catch (error) {
-    console.error('获取行程列表失败:', error)
-    // 接口失败时使用本地模拟数据
-    fullTicketsList.value = mockTicketsList
-  } finally {
-    loading.value = false
-  }
-}
-
-// =============================================
 // 生命周期
 // =============================================
-onMounted(async () => {
-  await fetchTickets()
-  initFromUrl()
+onMounted(() => {
+  fetchTickets()
 })
 </script>
 
@@ -1752,6 +1218,7 @@ onMounted(async () => {
 .card-image {
   position: relative;
   width: 300px;
+  height: 200px;
   flex-shrink: 0;
   overflow: hidden;
   background: #f0f0f0;
@@ -1785,7 +1252,7 @@ onMounted(async () => {
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
   min-width: 0;
 }
 
@@ -1898,6 +1365,7 @@ onMounted(async () => {
 /* 右侧价格区域 - 底部对齐 */
 .card-price {
   width: 150px;
+  height: 200px;
   flex-shrink: 0;
   display: flex;
   align-items: flex-end;

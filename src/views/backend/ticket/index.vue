@@ -114,17 +114,14 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)">
-              <el-icon><Edit /></el-icon> 编辑
-            </el-button>
-            <el-button :type="scope.row.status === 1 ? 'warning' : 'success'" size="small" @click="handleToggleStatus(scope.row)">
-              <el-icon><Switch /></el-icon> {{ scope.row.status === 1 ? '下架' : '上架' }}
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+              <el-button type="success" size="small" @click="handleManageDetail(scope.row)">预订详情</el-button>
+              <el-button :type="scope.row.status === 1 ? 'info' : 'success'" size="small" @click="handleToggleStatus(scope.row)">{{ scope.row.status === 1 ? '下架' : '上架' }}</el-button>
+              <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -160,14 +157,17 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="行程封面" prop="mainImage">
-              <el-input v-model="tourForm.mainImage" placeholder="请输入图片URL">
-                <template #append>
-                  <el-button @click="previewImage">预览</el-button>
-                </template>
-              </el-input>
-              <div v-if="tourForm.mainImage" class="image-preview">
-                <el-image :src="tourForm.mainImage" fit="cover" style="width: 120px; height: 80px; border-radius: 4px;" />
-              </div>
+              <el-upload
+                class="image-uploader"
+                :show-file-list="false"
+                :http-request="handleImageUpload"
+                :before-upload="beforeImageUpload"
+                accept="image/*"
+              >
+                <img v-if="tourForm.mainImage" :src="tourForm.mainImage" class="uploaded-image" />
+                <el-icon v-else class="image-uploader-icon"><Plus /></el-icon>
+              </el-upload>
+              <div class="upload-tip">点击上传封面图片，建议尺寸 400x300</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -209,11 +209,6 @@
               <el-select v-model="tourForm.month" placeholder="请选择出发月份" style="width: 100%;">
                 <el-option v-for="m in 12" :key="m" :label="m + '月'" :value="m"></el-option>
               </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="最低价格" prop="minPrice">
-              <el-input-number v-model="tourForm.minPrice" :precision="0" :min="0" :step="100" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -280,6 +275,13 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 预订详情管理对话框 -->
+    <TourDetailManager
+      v-model="detailDialogVisible"
+      :tour-id="detailManagerTourId"
+      :tour-title="detailManagerTourTitle"
+    />
   </div>
 </template>
 
@@ -288,6 +290,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Switch } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import TourDetailManager from './TourDetailManager.vue'
 
 // 出发城市映射
 const cityMap = {
@@ -337,6 +340,11 @@ const isEdit = ref(false)
 const formLoading = ref(false)
 const tourFormRef = ref(null)
 
+// 预订详情管理
+const detailDialogVisible = ref(false)
+const detailManagerTourId = ref(null)
+const detailManagerTourTitle = ref('')
+
 // 标签输入
 const tagsInput = ref('')
 const parsedTags = computed(() => {
@@ -360,6 +368,44 @@ const parseTags = (tags) => {
   return []
 }
 
+// 图片上传
+const handleImageUpload = async (options) => {
+  const { file, onSuccess, onError } = options
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const imageUrl = await request.upload('/file/upload/img', formData, {
+      showDefaultMsg: false
+    })
+    if (imageUrl) {
+      tourForm.mainImage = imageUrl
+      ElMessage.success('图片上传成功')
+      onSuccess()
+    } else {
+      onError(new Error('上传失败'))
+    }
+  } catch (error) {
+    ElMessage.error('图片上传失败')
+    onError(error)
+  }
+}
+
+// 图片上传前校验
+const beforeImageUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt5M = file.size / 1024 / 1024 < 5
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error('图片大小不能超过 5MB!')
+    return false
+  }
+  return true
+}
+
 // 表单数据
 const tourForm = reactive({
   id: null,
@@ -372,7 +418,6 @@ const tourForm = reactive({
   destination: '',
   days: 1,
   month: new Date().getMonth() + 1,
-  minPrice: 0,
   starRating: 5,
   recommendDate: '',
   moreDates: '',
@@ -389,8 +434,7 @@ const tourRules = {
   tourType: [{ required: true, message: '请选择行程类型', trigger: 'change' }],
   city: [{ required: true, message: '请选择出发城市', trigger: 'change' }],
   destination: [{ required: true, message: '请选择目的地', trigger: 'change' }],
-  days: [{ required: true, message: '请输入行程天数', trigger: 'blur' }],
-  minPrice: [{ required: true, message: '请输入最低价格', trigger: 'blur' }]
+  days: [{ required: true, message: '请输入行程天数', trigger: 'blur' }]
 }
 
 // 获取行程列表
@@ -520,10 +564,17 @@ const resetForm = () => {
   Object.assign(tourForm, {
     id: null, title: '', subtitle: '', mainImage: '', tag: '',
     tourType: '', city: '', destination: '', days: 1,
-    month: new Date().getMonth() + 1, minPrice: 0, starRating: 5,
+    month: new Date().getMonth() + 1, starRating: 5,
     recommendDate: '', moreDates: '', feature: '', tags: '',
     enrolledCount: 0, theme: '', status: 1
   })
+}
+
+// 管理预订详情
+const handleManageDetail = (row) => {
+  detailManagerTourId.value = row.id
+  detailManagerTourTitle.value = row.title
+  detailDialogVisible.value = true
 }
 
 // 预览图片
@@ -645,6 +696,18 @@ onMounted(() => {
       color: #f56c6c;
       font-weight: 600;
     }
+
+    .action-buttons {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 4px;
+      align-items: center;
+
+      .el-button {
+        flex-shrink: 0;
+        padding: 4px 8px;
+      }
+    }
   }
 
   .pagination-container {
@@ -654,8 +717,37 @@ onMounted(() => {
   }
 
   .tour-dialog {
-    .image-preview {
-      margin-top: 8px;
+    .image-uploader {
+      :deep(.el-upload) {
+        border: 1px dashed #d9d9d9;
+        border-radius: 6px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s;
+        &:hover {
+          border-color: #409eff;
+        }
+      }
+      .uploaded-image {
+        width: 148px;
+        height: 100px;
+        display: block;
+        object-fit: cover;
+      }
+      .image-uploader-icon {
+        font-size: 28px;
+        color: #8c939d;
+        width: 148px;
+        height: 100px;
+        line-height: 100px;
+        text-align: center;
+      }
+    }
+    .upload-tip {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 4px;
     }
 
     .form-tip {

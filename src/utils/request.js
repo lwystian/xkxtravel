@@ -223,6 +223,18 @@ const request = {
 
   delete(url, config = {}) {
     return service.delete(url, config)
+  },
+
+  // 文件上传
+  upload(url, formData, config = {}) {
+    const token = localStorage.getItem('token') || ''
+    return service.post(url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'token': token
+      },
+      ...config
+    })
   }
 }
 

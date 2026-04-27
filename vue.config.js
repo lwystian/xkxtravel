@@ -10,6 +10,10 @@ module.exports = defineConfig({
         // pathRewrite: {
         //   '^/api': ''
         // }
+      },
+      '/img': {
+        target: 'http://localhost:1236',
+        changeOrigin: true
       }
     },
     client: {

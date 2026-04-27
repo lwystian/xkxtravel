@@ -7,10 +7,10 @@
         <div class="main-image-container">
           <!-- 有视频时显示视频播放器 -->
           <div v-if="hasVideo" class="video-container">
-            <video 
+            <video
               ref="videoPlayer"
               :key="videoUrl"
-              :src="videoUrl" 
+              :src="videoUrl"
               :poster="currentPoster"
               :controls="showControls"
               class="main-video"
@@ -26,11 +26,11 @@
             </div>
           </div>
           <!-- 没有视频时显示图片 -->
-          <img 
+          <img
             v-else
-            :src="currentImage" 
-            alt="产品图片" 
-            class="main-image" 
+            :src="currentImage"
+            alt="产品图片"
+            class="main-image"
           />
           <div class="image-tags">
             <span v-for="(tag, idx) in productTags" :key="idx" class="tag">{{ tag }}</span>
@@ -45,7 +45,7 @@
             :class="['thumbnail-item', { active: hasVideo ? currentMediaIndex === index : currentImageIndex === index }]"
             @click="selectMedia(index)"
           >
-            <img :src="item.thumbnail" :alt="`封面${index + 1}`" />
+            <img :src="item.thumbnail || item" :alt="`封面${index + 1}`" />
           </div>
         </div>
 
@@ -374,9 +374,9 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-// import { getProductDetail } from '@/api/product' // 后端API
+import { getTourDetailFull } from '@/api/tour'
 
 // =============================================
 // 常量定义
@@ -387,6 +387,7 @@ const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 const route = useRoute()
+const router = useRouter()
 
 // =============================================
 // 响应式数据
@@ -410,27 +411,30 @@ const refundPolicy = ref({ support: '', special: '' })
 // =============================================
 // 媒体数据配置（从后端获取）
 // =============================================
-const hasVideo = ref(false)           // 是否有视频
-const videoUrl = ref('')              // 视频地址
-const showControls = ref(false)       // 控制栏显示状态
-const mediaList = ref([])             // 封面列表（图片或视频封面）
-const currentMediaIndex = ref(0)      // 当前选中的封面索引
-const currentImageIndex = ref(0)      // 当前显示的图片索引（无视频时）
-const videoPlayer = ref(null)         // 视频播放器引用
+const hasVideo = ref(false)
+const videoUrl = ref('')
+const showControls = ref(false)
+const mediaList = ref([])
+const currentMediaIndex = ref(0)
+const currentImageIndex = ref(0)
+const videoPlayer = ref(null)
 
 // 当前视频封面
 const currentPoster = computed(() => {
-  return mediaList.value[currentMediaIndex.value]?.poster || mediaList.value[0]?.poster || ''
+  return mediaList.value[currentMediaIndex.value]?.poster || mediaList.value[currentMediaIndex.value] || ''
 })
 
-// 没有视频时使用的图片
+// 产品图片
 const productImages = ref({
   main: [],
   thumbnails: []
 })
 
 const currentImage = computed(() => {
-  return productImages.value.main[currentImageIndex.value] || ''
+  if (productImages.value.main && productImages.value.main.length > 0) {
+    return productImages.value.main[currentImageIndex.value] || productImages.value.main[0] || ''
+  }
+  return mediaList.value[currentImageIndex.value] || ''
 })
 
 // =============================================
@@ -440,9 +444,9 @@ const tripPackages = ref([])
 
 // 判断是否有儿童价
 const hasChildPrice = computed(() => {
-  return tripPackages.value.some(pkg => 
-    pkg.childPrice !== null && 
-    pkg.childPrice !== undefined && 
+  return tripPackages.value.some(pkg =>
+    pkg.childPrice !== null &&
+    pkg.childPrice !== undefined &&
     pkg.childPrice > 0
   )
 })
@@ -470,6 +474,9 @@ const childCount = ref(0)
 const showAdultDropdown = ref(false)
 const showChildDropdown = ref(false)
 const currentBatch = ref(null)
+
+// 加载状态
+const loading = ref(false)
 
 // =============================================
 // 计算属性 - 最低价
@@ -647,18 +654,14 @@ const toggleDateSelection = (item) => {
 }
 
 // 选择媒体（切换封面/图片）
-// 核心修改：只暂停视频，不重置进度
 const selectMedia = (index) => {
   if (hasVideo.value) {
-    // 有视频时：切换封面，只暂停视频（保留进度），隐藏控制栏
     if (videoPlayer.value) {
-      videoPlayer.value.pause()           // 只暂停，不重置 currentTime
-      showControls.value = false          // 隐藏控制栏，让自定义播放按钮重新显示
+      videoPlayer.value.pause()
+      showControls.value = false
     }
-    // 切换封面
     currentMediaIndex.value = index
   } else {
-    // 无视频时：切换图片
     currentImageIndex.value = index
   }
 }
@@ -673,16 +676,16 @@ const playVideo = () => {
 
 // 视频播放结束
 const handleVideoEnded = () => {
-  // 可选：视频结束后重置控制栏，重新显示播放按钮
-  // showControls.value = false
 }
 
+// eslint-disable-next-line no-unused-vars
 const selectTripPackage = (id) => {
   selectedPackage.value = id
   selectedTrip.value = String(id)
   refreshCurrentBatchPrice()
 }
 
+// eslint-disable-next-line no-unused-vars
 const selectBatchPackage = (id) => {
   selectedBatchPackage.value = id
   selectedPackageType.value = String(id)
@@ -745,11 +748,11 @@ const initDefaultSelection = () => {
     const firstBatch = batchDates.value[0]
     selectedBatchDate.value = firstBatch.date
     selectedDate.value = firstBatch.date
-    
+
     const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
     const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
     const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
-    
+
     currentBatch.value = {
       ...firstBatch,
       finalAdultPrice: tripAdultPrice + (firstBatch.adultDateExtraFee || 0) + batchExtra,
@@ -762,164 +765,130 @@ const initDefaultSelection = () => {
 // 从后端获取数据
 // =============================================
 const fetchProductDetail = async () => {
+  const productId = route.params.id
+
+  if (!productId) {
+    ElMessage.error('无效的产品ID')
+    router.push('/ticket')
+    return
+  }
+
+  loading.value = true
+
   try {
-    // TODO: 替换为真实的API调用
-    // const productId = route.params.id
-    // const res = await getProductDetail(productId)
-    // if (res.code === 0) {
-    //   const data = res.data
-    //   productInfo.value = data.productInfo
-    //   productTags.value = data.tags || []
-    //   productFeatures.value = data.features || []
-    //   supplierInfo.value = data.supplier || { name: '' }
-    //   refundPolicy.value = data.refundPolicy || { support: '', special: '' }
-    //   tripPackages.value = data.tripPackages || []
-    //   batchPackages.value = data.batchPackages || []
-    //   batchDates.value = data.batchDates || []
-    //   
-    //   // 处理图片和视频 - 根据是否有视频链接自动切换模式
-    //   if (data.video && data.video.url) {
-    //     hasVideo.value = true
-    //     videoUrl.value = data.video.url
-    //     mediaList.value = data.video.posters || data.images?.thumbnails?.map(thumb => ({
-    //       thumbnail: thumb,
-    //       poster: thumb
-    //     })) || []
-    //   } else {
-    //     hasVideo.value = false
-    //     productImages.value = data.images || { main: [], thumbnails: [] }
-    //     mediaList.value = productImages.value.thumbnails.map((thumb, idx) => ({
-    //       thumbnail: thumb,
-    //       poster: productImages.value.main[idx] || thumb
-    //     }))
-    //   }
-    //   
-    //   // 设置默认选中
-    //   if (tripPackages.value.length > 0) {
-    //     selectedPackage.value = tripPackages.value[0].id
-    //     selectedTrip.value = String(tripPackages.value[0].id)
-    //   }
-    //   if (batchPackages.value.length > 0) {
-    //     selectedBatchPackage.value = batchPackages.value[0].id
-    //     selectedPackageType.value = String(batchPackages.value[0].id)
-    //   }
-    //   
-    //   initDefaultSelection()
-    // }
+    const res = await getTourDetailFull(productId)
 
-    // ========== Mock 数据（演示用，对接后端时删除）==========
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    productInfo.value = {
-      title: '极道·小鹿池 | 金佛山强度穿越，重庆毕业线',
-      subtitle: '<极道之徒·小鹿池>18km累计爬升1200米，龙岩城-小鹿池-石人峰，新人勿入！！！',
-      code: 1,
-      days: 1,
-      departure: '重庆',
-      enrolledCount: 253,
-      notice: '周边游提前1天，国内游提前3天，出境游提前3-5天，APP和短信群发出团通知'
-    }
-    
-    productTags.value = ['跟团游', '户外游', '登山徒步']
-    productFeatures.value = ['强度穿越', '山城经典', '林海秘境', '小众线路']
-    supplierInfo.value = { name: '重庆侠客行国际旅行社有限公司' }
-    refundPolicy.value = { support: '支持退款', special: '特殊原因退订保障' }
-    
-    tripPackages.value = [
-      { id: 1, name: '极道·小鹿池（标准套餐）', adultPrice: 158, childPrice: 79 },
-      { id: 2, name: '极道·小鹿池（VIP套餐）', adultPrice: 198, childPrice: 99 },
-      { id: 3, name: '极道·小鹿池（豪华套餐）', adultPrice: 258, childPrice: 129 }
-    ]
-    
-    batchPackages.value = [
-      { id: 1, name: '工贸集散·标准套餐', extraFeePerPerson: 0 },
-      { id: 2, name: '工贸集散·含餐套餐', extraFeePerPerson: 30 },
-      { id: 3, name: '市区上门接送', extraFeePerPerson: 50 }
-    ]
-    
-    batchDates.value = [
-      { date: '2026-05-05', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 28 },
-      { date: '2026-05-10', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 15 },
-      { date: '2026-05-12', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 30 },
-      { date: '2026-05-17', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 22 },
-      { date: '2026-05-21', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 30 },
-      { date: '2026-06-01', adultDateExtraFee: 0, childDateExtraFee: 0, status: '可报名', remaining: 45 }
-    ]
+    if (res) {
+      // 解析后端返回的详细数据
+      const data = res
 
-    // 设置日历默认月份为最早有行程的月份
-    const setDefaultCalendarMonth = () => {
-      if (batchDates.value.length > 0) {
-        // 找出最早的日期
-        const earliestDate = batchDates.value.reduce((earliest, current) => {
-          return new Date(current.date) < new Date(earliest.date) ? current : earliest
-        }, batchDates.value[0])
-        
-        const earliestYear = new Date(earliestDate.date).getFullYear()
-        const earliestMonth = new Date(earliestDate.date).getMonth() + 1
-        
-        currentYear.value = earliestYear
-        currentMonth.value = earliestMonth
+      // 基本信息
+      if (data.tour) {
+        productInfo.value = {
+          title: data.tour.title || '',
+          subtitle: data.tour.subtitle || '',
+          code: data.tour.code || data.tour.id,
+          days: data.tour.days || 1,
+          departure: data.tour.departure || '',
+          enrolledCount: data.tour.enrolledCount || 0,
+          notice: data.tour.notice || ''
+        }
       }
-    }
 
-    // 调用这个函数
-    setDefaultCalendarMonth()
-    
-    // 根据是否有视频链接自动决定模式
-    // 有视频链接时使用视频模式
-    const hasVideoLink = true  // 改为 false 测试纯图片模式
-    const videoLink = 'https://vjs.zencdn.net/v/oceans.mp4'
-    
-    if (hasVideoLink && videoLink) {
-      // 视频模式
-      hasVideo.value = true
-      videoUrl.value = videoLink
-      mediaList.value = [
-        { thumbnail: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop' },
-        { thumbnail: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop' },
-        { thumbnail: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&h=600&fit=crop' },
-        { thumbnail: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=800&h=600&fit=crop' },
-        { thumbnail: 'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=150&h=100&fit=crop', poster: 'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=800&h=600&fit=crop' }
-      ]
-    } else {
-      // 纯图片模式
-      hasVideo.value = false
-      productImages.value = {
-        main: [
-          'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop',
-          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
-          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&h=600&fit=crop',
-          'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=800&h=600&fit=crop',
-          'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=800&h=600&fit=crop'
-        ],
-        thumbnails: [
-          'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=150&h=100&fit=crop',
-          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=150&h=100&fit=crop',
-          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=150&h=100&fit=crop',
-          'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=150&h=100&fit=crop',
-          'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=150&h=100&fit=crop'
-        ]
-      }
-      mediaList.value = productImages.value.thumbnails.map((thumb, idx) => ({
-        thumbnail: thumb,
-        poster: productImages.value.main[idx] || thumb
+      // 标签
+      productTags.value = data.tags || []
+
+      // 产品特色
+      productFeatures.value = data.features || []
+
+      // 供应商
+      supplierInfo.value = data.supplier || { name: '' }
+
+      // 退订政策
+      refundPolicy.value = data.refundPolicy || { support: '', special: '' }
+
+      // 行程套餐
+      tripPackages.value = (data.tripPackages || []).map(pkg => ({
+        id: pkg.id,
+        name: pkg.name,
+        adultPrice: pkg.adultPrice,
+        childPrice: pkg.childPrice
       }))
+
+      // 批次套餐
+      batchPackages.value = (data.batchPackages || []).map(pkg => ({
+        id: pkg.id,
+        name: pkg.name,
+        extraFeePerPerson: pkg.extraFeePerPerson || 0,
+        description: pkg.description || ''
+      }))
+
+      // 出发日期
+      batchDates.value = (data.batchDates || []).map(batch => ({
+        date: batch.date,
+        adultDateExtraFee: batch.adultDateExtraFee || 0,
+        childDateExtraFee: batch.childDateExtraFee || 0,
+        status: batch.status || '可报名',
+        remaining: batch.remaining || 0
+      }))
+
+      // 图片处理
+      if (data.images) {
+        productImages.value = {
+          main: data.images.main || [],
+          thumbnails: data.images.thumbnails || []
+        }
+        mediaList.value = data.images.thumbnails || data.images.main || []
+      }
+
+      // 视频处理
+      if (data.video && data.video.url) {
+        hasVideo.value = true
+        videoUrl.value = data.video.url
+        mediaList.value = data.images?.thumbnails?.map((thumb, idx) => ({
+          thumbnail: thumb,
+          poster: data.images.main[idx] || thumb
+        })) || []
+      } else {
+        hasVideo.value = false
+      }
+
+      // 设置日历默认月份为最早有行程的月份
+      setDefaultCalendarMonth()
+
+      // 设置默认选中
+      if (tripPackages.value.length > 0) {
+        selectedPackage.value = tripPackages.value[0].id
+        selectedTrip.value = String(tripPackages.value[0].id)
+      }
+      if (batchPackages.value.length > 0) {
+        selectedBatchPackage.value = batchPackages.value[0].id
+        selectedPackageType.value = String(batchPackages.value[0].id)
+      }
+
+      initDefaultSelection()
     }
-    
-    // 设置默认选中
-    if (tripPackages.value.length > 0) {
-      selectedPackage.value = tripPackages.value[0].id
-      selectedTrip.value = String(tripPackages.value[0].id)
-    }
-    if (batchPackages.value.length > 0) {
-      selectedBatchPackage.value = batchPackages.value[0].id
-      selectedPackageType.value = String(batchPackages.value[0].id)
-    }
-    
-    initDefaultSelection()
   } catch (error) {
     console.error('获取产品详情失败:', error)
     ElMessage.error('加载产品信息失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 设置日历默认月份为最早有行程的月份
+const setDefaultCalendarMonth = () => {
+  if (batchDates.value.length > 0) {
+    // 找出最早的日期
+    const earliestDate = batchDates.value.reduce((earliest, current) => {
+      return new Date(current.date) < new Date(earliest.date) ? current : earliest
+    }, batchDates.value[0])
+
+    const earliestYear = new Date(earliestDate.date).getFullYear()
+    const earliestMonth = new Date(earliestDate.date).getMonth() + 1
+
+    currentYear.value = earliestYear
+    currentMonth.value = earliestMonth
   }
 }
 
@@ -968,13 +937,11 @@ const handleBooking = async () => {
         type: 'info'
       }
     )
-    
+
     // TODO: 调用后端API创建订单
-    // const res = await createOrder(orderData)
-    
     console.log('提交订单参数:', orderData)
     ElMessage.success(`预订成功，订单号：BK${Date.now()}`)
-    
+
   } catch {
     ElMessage.info('已取消')
   }
@@ -1023,7 +990,7 @@ const startCustomTravel = () => {
 }
 
 // 监听视频源变化，重新加载视频
-watch(videoUrl, (newUrl, oldUrl) => {
+watch(videoUrl, (newUrl) => {
   if (newUrl && videoPlayer.value) {
     videoPlayer.value.load()
   }

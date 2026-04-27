@@ -114,14 +114,29 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="scope">
-            <div class="action-buttons">
-              <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-              <el-button type="success" size="small" @click="handleManageDetail(scope.row)">预订详情</el-button>
-              <el-button :type="scope.row.status === 1 ? 'info' : 'success'" size="small" @click="handleToggleStatus(scope.row)">{{ scope.row.status === 1 ? '下架' : '上架' }}</el-button>
-              <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
-            </div>
+            <el-dropdown trigger="click" @command="(cmd) => handleAction(cmd, scope.row)">
+              <el-button type="primary" size="small">
+                操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="edit">
+                    <el-icon><Edit /></el-icon> 编辑
+                  </el-dropdown-item>
+                  <el-dropdown-item command="detail">
+                    <el-icon><List /></el-icon> 预订详情
+                  </el-dropdown-item>
+                  <el-dropdown-item :command="scope.row.status === 1 ? 'off' : 'on'">
+                    <el-icon><Switch /></el-icon> {{ scope.row.status === 1 ? '下架' : '上架' }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="delete" divided style="color: #F56C6C;">
+                    <el-icon><Delete /></el-icon> 删除
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -288,7 +303,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Switch } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, Switch, ArrowDown, List } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import TourDetailManager from './TourDetailManager.vue'
 
@@ -525,6 +540,25 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
+// 下拉菜单操作处理
+const handleAction = (command, row) => {
+  switch (command) {
+    case 'edit':
+      handleEdit(row)
+      break
+    case 'detail':
+      handleManageDetail(row)
+      break
+    case 'on':
+    case 'off':
+      handleToggleStatus(row)
+      break
+    case 'delete':
+      handleDelete(row)
+      break
+  }
+}
+
 // 切换状态
 const handleToggleStatus = async (row) => {
   const newStatus = row.status === 1 ? 0 : 1
@@ -710,7 +744,7 @@ onMounted(() => {
 
     .action-buttons {
       display: flex;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       gap: 4px;
       align-items: center;
 
@@ -718,6 +752,10 @@ onMounted(() => {
         flex-shrink: 0;
         padding: 4px 8px;
       }
+    }
+
+    .el-dropdown {
+      display: inline-block;
     }
   }
 

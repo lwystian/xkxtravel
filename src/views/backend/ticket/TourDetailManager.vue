@@ -40,7 +40,7 @@
         <div class="video-section">
           <el-form label-width="100px">
             <el-form-item label="启用视频">
-              <el-switch v-model="videoEnabled" />
+              <el-switch v-model="videoEnabled" @change="handleVideoEnabledChange" />
             </el-form-item>
             <el-form-item v-if="videoEnabled" label="视频上传">
               <el-upload
@@ -52,7 +52,7 @@
               >
                 <div v-if="videoUrl" class="video-preview">
                   <video :src="videoUrl" controls class="preview-video" />
-                  <el-button type="danger" size="small" @click.stop="removeVideo">删除视频</el-button>
+                  <el-button type="danger" size="small" @click.stop="handleRemoveVideo">删除视频</el-button>
                 </div>
                 <div v-else class="upload-placeholder">
                   <el-icon><Upload /></el-icon>
@@ -60,7 +60,7 @@
                 </div>
               </el-upload>
             </el-form-item>
-            <el-form-item v-if="videoEnabled && videoUrl" label="视频封面">
+            <el-form-item v-if="videoUrl" label="视频封面">
               <el-upload
                 class="image-uploader"
                 :show-file-list="false"
@@ -76,9 +76,6 @@
             </el-form-item>
           </el-form>
           <div class="video-tip">支持 MP4、AVI 格式，建议大小不超过 100MB</div>
-          <div class="section-actions">
-            <el-button type="primary" @click="saveVideo" :disabled="!videoEnabled">保存视频</el-button>
-          </div>
         </div>
       </el-tab-pane>
 
@@ -112,7 +109,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100">
+            <el-table-column label="操作" width="140">
               <template #default="scope">
                 <el-button type="primary" size="small" @click="editTripPackage(scope.row)">编辑</el-button>
                 <el-button type="danger" size="small" @click="handleDeleteTripPackage(scope.row)">删除</el-button>
@@ -147,7 +144,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100">
+            <el-table-column label="操作" width="140">
               <template #default="scope">
                 <el-button type="primary" size="small" @click="editBatchPackage(scope.row)">编辑</el-button>
                 <el-button type="danger" size="small" @click="handleDeleteBatchPackage(scope.row)">删除</el-button>
@@ -204,11 +201,13 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="130">
+            <el-table-column label="操作" width="180">
               <template #default="scope">
-                <el-button type="primary" size="small" @click="editBatch(scope.row)">编辑</el-button>
-                <el-button type="warning" size="small" @click="updateRemaining(scope.row)">余位</el-button>
-                <el-button type="danger" size="small" @click="deleteBatch(scope.row)">删除</el-button>
+                <div style="display: flex; gap: 4px; flex-wrap: nowrap;">
+                  <el-button type="primary" size="small" @click="editBatch(scope.row)">编辑</el-button>
+                  <el-button type="warning" size="small" @click="updateRemaining(scope.row)">余位</el-button>
+                  <el-button type="danger" size="small" @click="deleteBatch(scope.row)">删除</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -525,8 +524,8 @@ const fetchTourDetail = async () => {
       // 图片
       images.value = res.images?.main?.length > 0 ? res.images.main : ['', '', '', '', '']
       while (images.value.length < 5) images.value.push('')
-      // 视频
-      videoEnabled.value = !!(res.video?.url)
+      // 视频（读取后端的启用状态）
+      videoEnabled.value = res.video?.enabled === 1
       videoUrl.value = res.video?.url || ''
       videoPoster.value = res.video?.poster || ''
       // 出团通知
@@ -570,17 +569,21 @@ const handleImageUpload = async (options, index) => {
   const formData = new FormData()
   formData.append('file', file)
   try {
+    console.log('开始上传图片, index:', index, 'file:', file.name)
     const imageUrl = await request.upload('/file/upload/img', formData, { showDefaultMsg: false })
+    console.log('上传成功, 返回URL:', imageUrl)
     if (imageUrl) {
       images.value[index] = imageUrl
       ElMessage.success('图片上传成功')
       onSuccess()
     } else {
+      console.error('上传失败, imageUrl为空')
       ElMessage.error('上传失败')
       onError(new Error('上传失败'))
     }
   } catch (error) {
-    ElMessage.error('图片上传失败')
+    console.error('图片上传失败:', error)
+    ElMessage.error('图片上传失败: ' + (error.message || '未知错误'))
     onError(error)
   }
 }
@@ -873,8 +876,12 @@ const saveNotice = async () => {
 const saveImages = async () => {
   try {
     const imagesToSave = images.value.filter(img => img)
-    console.log('保存图片，tourId:', props.tourId, 'images:', imagesToSave)
-    await updateTourImages(props.tourId, imagesToSave)
+    console.log('=== 保存图片 ===')
+    console.log('images.value:', images.value)
+    console.log('imagesToSave:', imagesToSave)
+    console.log('tourId:', props.tourId)
+    const res = await updateTourImages(props.tourId, imagesToSave)
+    console.log('保存响应:', res)
     ElMessage.success('图片保存成功')
   } catch (error) {
     console.error('保存图片失败:', error)
@@ -886,12 +893,32 @@ const saveVideo = async () => {
   try {
     await updateTourVideo(props.tourId, {
       videoUrl: videoUrl.value,
-      videoPoster: videoPoster.value
+      videoPoster: videoPoster.value,
+      videoEnabled: videoEnabled.value ? 1 : 0
     })
     ElMessage.success('视频保存成功')
   } catch (error) {
     console.error('保存视频失败:', error)
   }
+}
+
+// 启用视频开关变化时自动保存
+const handleVideoEnabledChange = () => {
+  saveVideo()
+}
+
+// 监听视频相关数据变化，自动保存
+watch([videoUrl, videoPoster], () => {
+  if (props.tourId && videoUrl.value) {
+    saveVideo()
+  }
+})
+
+// 删除视频后自动保存
+const handleRemoveVideo = () => {
+  videoUrl.value = ''
+  videoPoster.value = ''
+  saveVideo()
 }
 </script>
 

@@ -16,40 +16,40 @@
     <!-- 搜索表单 -->
     <el-card shadow="never" class="search-card">
       <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="行程名称">
-          <el-input v-model="searchForm.title" placeholder="请输入行程名称" clearable style="width: 180px;"></el-input>
+        <el-form-item label="行程名称" class="search-item">
+          <el-input v-model="searchForm.title" placeholder="请输入" clearable style="width: 140px;"></el-input>
         </el-form-item>
-        <el-form-item label="行程类型">
-          <el-select v-model="searchForm.tourType" placeholder="请选择行程类型" clearable style="width: 140px;">
+        <el-form-item label="行程类型" class="search-item">
+          <el-select v-model="searchForm.tourType" placeholder="请选择" clearable style="width: 110px;">
             <el-option label="周边游" value="around"></el-option>
             <el-option label="长线游" value="long"></el-option>
             <el-option label="跟团游" value="team"></el-option>
             <el-option label="邮轮出行" value="cruise"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="出发城市">
-          <el-select v-model="searchForm.city" placeholder="请选择出发城市" clearable filterable style="width: 140px;">
+        <el-form-item label="出发城市" class="search-item">
+          <el-select v-model="searchForm.city" placeholder="请选择" clearable filterable style="width: 110px;">
             <el-option v-for="(name, code) in cityMap" :key="code" :label="name" :value="code"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="目的地">
-          <el-select v-model="searchForm.destination" placeholder="请选择目的地" clearable filterable style="width: 140px;">
+        <el-form-item label="目的地" class="search-item">
+          <el-select v-model="searchForm.destination" placeholder="请选择" clearable filterable style="width: 110px;">
             <el-option v-for="(name, code) in destinationMap" :key="code" :label="name" :value="code"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="主题">
-          <el-select v-model="searchForm.theme" placeholder="请选择主题" clearable style="width: 140px;">
+        <el-form-item label="主题" class="search-item">
+          <el-select v-model="searchForm.theme" placeholder="请选择" clearable style="width: 110px;">
             <el-option label="风景游" value="scenic"></el-option>
             <el-option label="文化游" value="cultural"></el-option>
             <el-option label="探险游" value="adventure"></el-option>
             <el-option label="徒步游" value="hiking"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch" class="search-btn">
+        <el-form-item class="search-buttons">
+          <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon> 查询
           </el-button>
-          <el-button @click="resetSearch" class="reset-btn">
+          <el-button @click="resetSearch">
             <el-icon><Refresh /></el-icon> 重置
           </el-button>
         </el-form-item>
@@ -663,15 +663,26 @@ onMounted(() => {
     border-radius: 8px;
 
     .search-form {
-      flex-wrap: wrap;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
 
       :deep(.el-form-item) {
-        margin-bottom: 12px;
+        margin-bottom: 0;
+        margin-right: 12px;
       }
 
-      .search-btn {
-        background-color: #409eff;
-        border-color: #409eff;
+      :deep(.el-form-item__label) {
+        padding-right: 4px;
+      }
+
+      .search-item {
+        flex-shrink: 0;
+      }
+
+      .search-buttons {
+        flex-shrink: 0;
+        margin-left: auto;
       }
     }
   }

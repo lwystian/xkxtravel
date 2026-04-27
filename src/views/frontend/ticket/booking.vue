@@ -841,8 +841,8 @@ const fetchProductDetail = async () => {
         mediaList.value = data.images.thumbnails || data.images.main || []
       }
 
-      // 视频处理
-      if (data.video && data.video.url) {
+      // 视频处理（检查是否启用）
+      if (data.video && data.video.url && data.video.enabled === 1) {
         hasVideo.value = true
         videoUrl.value = data.video.url
         mediaList.value = data.images?.thumbnails?.map((thumb, idx) => ({

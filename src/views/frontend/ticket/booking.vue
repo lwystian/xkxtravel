@@ -92,13 +92,14 @@
                 { 'other-month': day.otherMonth },
                 { 'has-trip': day.hasTrip },
                 { selected: selectedDate === day.fullDate },
+                { disabled: day.hasTrip && !day.canBook },
                 { weekend: day.isWeekend }
               ]"
               @click="toggleDateSelection(day)"
             >
               <span class="day-number">{{ day.day }}</span>
               <div v-if="day.hasTrip && !day.otherMonth && day.batch" class="trip-info">
-                <span class="trip-status">{{ day.batch.status }}</span>
+                <span class="trip-status" :class="{ 'status-disabled': !day.canBook }">{{ day.batch.status }}</span>
                 <div class="trip-prices">
                   <span class="trip-price adult">成人 ¥{{ day.batch.finalAdultPrice }}</span>
                   <span v-if="hasChildPrice" class="trip-price child">儿童 ¥{{ day.batch.finalChildPrice }}</span>
@@ -126,25 +127,27 @@
               <tr
                 v-for="batch in batchDatesWithDisplay"
                 :key="batch.date"
-                :class="{ 'selected-row': selectedBatchDate === batch.date }"
+                :class="{ 'selected-row': selectedBatchDate === batch.date, 'disabled-row': !batch.canBook }"
               >
                 <td>{{ batch.date }}</td>
                 <td>{{ batch.weekdayName }}</td>
                 <td class="list-price">¥{{ batch.finalAdultPrice }}</td>
                 <td v-if="hasChildPrice" class="list-price">¥{{ batch.finalChildPrice }}</td>
                 <td>
-                  <span :class="['status-tag', batch.status === '可报名' ? 'success' : 'warning']">
+                  <span :class="['status-tag', batch.canBook ? 'success' : 'disabled']">
                     {{ batch.status }}
                   </span>
                 </td>
                 <td>{{ batch.remaining }}</td>
                 <td>
                   <button
+                    v-if="batch.canBook"
                     :class="['select-btn', { selected: selectedBatchDate === batch.date }]"
                     @click="toggleDateSelection(batch)"
                   >
                     {{ selectedBatchDate === batch.date ? '已选择' : '选择' }}
                   </button>
+                  <span v-else class="cannot-select">不可选</span>
                 </td>
               </tr>
             </tbody>
@@ -301,8 +304,8 @@
               <span class="booking-label">批次：</span>
               <select v-model="selectedBatchDate" class="booking-select" @change="handleBatchDateChange">
                 <option value="">请选择出发日期</option>
-                <option v-for="batch in batchDatesWithDisplay" :key="batch.date" :value="batch.date">
-                  {{ batch.date }} ({{ batch.weekdayName }}) - 成人¥{{ batch.finalAdultPrice }}<span v-if="hasChildPrice"> / 儿童¥{{ batch.finalChildPrice }}</span>
+                <option v-for="batch in batchDatesWithDisplay" :key="batch.date" :value="batch.date" :disabled="!batch.canBook">
+                  {{ batch.date }} ({{ batch.weekdayName }}) - {{ batch.status === '可报名' ? `成人¥${batch.finalAdultPrice}` : '' }}<span v-if="hasChildPrice"> / 儿童¥{{ batch.finalChildPrice }}</span> {{ !batch.canBook ? `[${batch.status}]` : '' }}
                 </option>
               </select>
             </div>
@@ -542,7 +545,8 @@ const batchDatesWithDisplay = computed(() => {
       ...batch,
       weekdayName: weekdayNames[date.getDay()],
       finalAdultPrice: tripAdultPrice + (batch.adultDateExtraFee || 0) + batchExtra,
-      finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0
+      finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0,
+      canBook: batch.status === '可报名'
     }
   })
 })
@@ -561,7 +565,8 @@ const getBatchForDate = (dateStr) => {
   return {
     ...batch,
     finalAdultPrice: tripAdultPrice + (batch.adultDateExtraFee || 0) + batchExtra,
-    finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0
+    finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0,
+    canBook: batch.status === '可报名'
   }
 }
 
@@ -591,7 +596,8 @@ const calendarDays = computed(() => {
       hasTrip: !!batch,
       isWeekend: date.getDay() === 0 || date.getDay() === 6,
       fullDate: dateStr,
-      batch: batch || null
+      batch: batch || null,
+      canBook: batch?.canBook ?? false
     })
   }
 
@@ -629,6 +635,12 @@ const nextMonth = () => {
 }
 
 const toggleDateSelection = (item) => {
+  // 检查是否可以预订
+  if (item.canBook === false) {
+    ElMessage.warning(`该批次${item.status || item.batch?.status}，不可选择`)
+    return
+  }
+
   if ('fullDate' in item) {
     if (item.otherMonth || !item.hasTrip || !item.batch) return
     if (selectedDate.value === item.fullDate) {
@@ -708,8 +720,17 @@ const handleBatchPackageSelect = () => {
 
 const handleBatchDateChange = () => {
   if (selectedBatchDate.value) {
-    const batch = batchDatesWithDisplay.value.find(b => b.date === selectedBatchDate.value)
-    currentBatch.value = batch || null
+    // 检查是否选择了不可预订的批次
+    const batch = batchDates.value.find(b => b.date === selectedBatchDate.value)
+    if (batch && batch.status !== '可报名') {
+      ElMessage.warning(`该批次${batch.status}，不可选择`)
+      selectedBatchDate.value = ''
+      currentBatch.value = null
+      selectedDate.value = ''
+      return
+    }
+    const batchDisplay = batchDatesWithDisplay.value.find(b => b.date === selectedBatchDate.value)
+    currentBatch.value = batchDisplay || null
     selectedDate.value = selectedBatchDate.value
   }
 }
@@ -745,18 +766,21 @@ const setChildCount = (num) => {
 
 const initDefaultSelection = () => {
   if (batchDates.value.length > 0) {
-    const firstBatch = batchDates.value[0]
-    selectedBatchDate.value = firstBatch.date
-    selectedDate.value = firstBatch.date
+    // 默认选中第一个可报名的批次
+    const firstBookableBatch = batchDates.value.find(b => b.status === '可报名') || batchDates.value[0]
+    selectedBatchDate.value = firstBookableBatch.date
+    selectedDate.value = firstBookableBatch.date
 
     const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
     const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
     const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
 
     currentBatch.value = {
-      ...firstBatch,
-      finalAdultPrice: tripAdultPrice + (firstBatch.adultDateExtraFee || 0) + batchExtra,
-      finalChildPrice: hasChildPrice.value ? (tripChildPrice + (firstBatch.childDateExtraFee || 0) + batchExtra) : 0
+      ...firstBookableBatch,
+      weekdayName: weekdayNames[new Date(firstBookableBatch.date).getDay()],
+      finalAdultPrice: tripAdultPrice + (firstBookableBatch.adultDateExtraFee || 0) + batchExtra,
+      finalChildPrice: hasChildPrice.value ? (tripChildPrice + (firstBookableBatch.childDateExtraFee || 0) + batchExtra) : 0,
+      canBook: firstBookableBatch.status === '可报名'
     }
   }
 }
@@ -910,6 +934,13 @@ const handleBooking = async () => {
     return
   }
 
+  // 检查批次状态
+  const batch = batchDates.value.find(b => b.date === selectedBatchDate.value)
+  if (batch && batch.status !== '可报名') {
+    ElMessage.warning(`该批次${batch.status}，不可预订`)
+    return
+  }
+
   const orderData = {
     productId: productInfo.value.code,
     tripPackageId: selectedPackage.value,
@@ -939,7 +970,6 @@ const handleBooking = async () => {
     )
 
     // TODO: 调用后端API创建订单
-    console.log('提交订单参数:', orderData)
     ElMessage.success(`预订成功，订单号：BK${Date.now()}`)
 
   } catch {
@@ -1205,9 +1235,18 @@ onMounted(() => {
   background: #fff8f5;
 }
 
+.batch-table .disabled-row {
+  background: #f5f5f5;
+  color: #999;
+}
+
 .list-price {
   color: #f60;
   font-weight: bold;
+}
+
+.batch-table .disabled-row .list-price {
+  color: #999;
 }
 
 .list-price-note {
@@ -1232,10 +1271,15 @@ onMounted(() => {
   border: 1px solid #b7eb8f;
 }
 
-.status-tag.warning {
-  background: #fffbe6;
-  color: #faad14;
-  border: 1px solid #ffe58f;
+.status-tag.disabled {
+  background: #f5f5f5;
+  color: #999;
+  border: 1px solid #d9d9d9;
+}
+
+.cannot-select {
+  color: #999;
+  font-size: 12px;
 }
 
 .select-btn {
@@ -1320,6 +1364,16 @@ onMounted(() => {
   border-color: #f60;
 }
 
+.calendar-day.has-trip.disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.calendar-day.has-trip.disabled:hover {
+  background: #f5f5f5;
+  border-color: transparent;
+}
+
 .calendar-day.selected {
   background: #f60 !important;
   border-color: #f60;
@@ -1353,6 +1407,10 @@ onMounted(() => {
   display: block;
   font-size: 10px;
   color: #f60;
+}
+
+.trip-status.status-disabled {
+  color: #999;
 }
 
 .trip-prices {
@@ -1468,6 +1526,10 @@ onMounted(() => {
 .booking-select:focus {
   border-color: #f60;
   outline: none;
+}
+
+.booking-select option:disabled {
+  color: #999;
 }
 
 .number-input-wrapper {

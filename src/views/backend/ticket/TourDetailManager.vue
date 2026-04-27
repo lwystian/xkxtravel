@@ -569,20 +569,16 @@ const handleImageUpload = async (options, index) => {
   const formData = new FormData()
   formData.append('file', file)
   try {
-    console.log('开始上传图片, index:', index, 'file:', file.name)
     const imageUrl = await request.upload('/file/upload/img', formData, { showDefaultMsg: false })
-    console.log('上传成功, 返回URL:', imageUrl)
     if (imageUrl) {
       images.value[index] = imageUrl
       ElMessage.success('图片上传成功')
       onSuccess()
     } else {
-      console.error('上传失败, imageUrl为空')
       ElMessage.error('上传失败')
       onError(new Error('上传失败'))
     }
   } catch (error) {
-    console.error('图片上传失败:', error)
     ElMessage.error('图片上传失败: ' + (error.message || '未知错误'))
     onError(error)
   }
@@ -876,12 +872,7 @@ const saveNotice = async () => {
 const saveImages = async () => {
   try {
     const imagesToSave = images.value.filter(img => img)
-    console.log('=== 保存图片 ===')
-    console.log('images.value:', images.value)
-    console.log('imagesToSave:', imagesToSave)
-    console.log('tourId:', props.tourId)
-    const res = await updateTourImages(props.tourId, imagesToSave)
-    console.log('保存响应:', res)
+    await updateTourImages(props.tourId, imagesToSave)
     ElMessage.success('图片保存成功')
   } catch (error) {
     console.error('保存图片失败:', error)

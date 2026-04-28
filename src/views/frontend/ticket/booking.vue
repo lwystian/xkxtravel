@@ -1190,21 +1190,24 @@ const handleBooking = async () => {
     // 调用后端API创建订单
     ElMessage.info('正在提交订单...')
     const res = await createTourOrder(orderData)
-    if (res.code === 200) {
-      const order = res.data
-      ElMessageBox.alert(
-        `预订成功！\n\n订单号：${order.orderNo}\n行程名称：${order.tourName}\n出发日期：${order.departureDate}\n总金额：¥${order.totalAmount}\n\n请联系客服进行付款。`,
+    // 响应拦截器已处理成功/失败提示，这里直接使用返回的订单数据
+    const order = res
+    // 询问用户是否立即支付
+    await ElMessageBox.confirm(
+        `预订成功！\n\n订单号：${order.orderNo}\n行程名称：${order.tourName}\n出发日期：${order.departureDate}\n总金额：¥${order.totalAmount}\n\n是否立即跳转到支付页面？`,
         '订单创建成功',
         {
-          confirmButtonText: '确定',
-          callback: () => {
-            router.push('/')
-          }
+          confirmButtonText: '立即支付',
+          cancelButtonText: '稍后支付',
+          type: 'success'
         }
-      )
-    } else {
-      ElMessage.error(res.message || '订单创建失败')
-    }
+      ).then(() => {
+        // 立即支付
+        router.push('/tour-order-pay/' + order.id)
+      }).catch(() => {
+        // 稍后支付，跳转到订单列表
+        router.push('/orders')
+      })
 
   } catch (error) {
     if (error !== 'cancel') {

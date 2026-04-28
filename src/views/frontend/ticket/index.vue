@@ -932,45 +932,56 @@ watch(sortType, () => {
 
 // 监听路由变化，当搜索参数改变时重新搜索
 watch(() => route.query, (query) => {
-  if (!isDataLoaded.value) return
-  
   const newSearch = query.search
   const newTourType = query.tourType
   const newCity = query.city
   const newDays = query.days
   const newDestination = query.destination
 
-  let needSearch = false
+  // 如果有URL参数需要搜索，先清除所有现有筛选条件
+  const hasParams = newSearch || newTourType || newCity || newDays || newDestination
 
-  if (newSearch !== undefined) {
-    searchKeyword.value = newSearch ? decodeURIComponent(newSearch) : ''
-    needSearch = true
-  }
+  if (hasParams) {
+    // 重置所有筛选条件（复用 resetSearch 函数）
+    resetSearch()
 
-  if (newTourType !== undefined) {
-    activeFilters.value.tourType = newTourType || ''
-    needSearch = true
-  }
+    // 应用新的搜索关键词
+    if (newSearch) {
+      searchKeyword.value = decodeURIComponent(newSearch)
+    }
 
-  if (newCity !== undefined) {
-    activeFilters.value.city = newCity || ''
-    needSearch = true
-  }
+    // 应用新的筛选条件
+    if (newTourType) {
+      activeFilters.value.tourType = newTourType
+    }
+    if (newCity) {
+      activeFilters.value.city = newCity
+    }
+    if (newDays) {
+      activeFilters.value.days = newDays
+    }
+    if (newDestination) {
+      activeFilters.value.destination = newDestination
+    }
 
-  if (newDays !== undefined) {
-    activeFilters.value.days = newDays || ''
-    needSearch = true
-  }
-
-  if (newDestination !== undefined) {
-    activeFilters.value.destination = newDestination || ''
-    needSearch = true
-  }
-
-  if (needSearch && hasSearched.value) {
-    executeSearch()
+    if (isDataLoaded.value) {
+      // 数据已加载，直接执行搜索
+      hasSearched.value = true
+      executeSearch()
+    } else {
+      // 数据还未加载，标记需要搜索，加载完成后会执行
+      hasSearched.value = true
+    }
   }
 }, { deep: true })
+
+// 监听数据加载完成
+watch(isDataLoaded, (loaded) => {
+  if (loaded && hasSearched.value) {
+    // 数据加载完成且之前有搜索标记，执行搜索
+    executeSearch()
+  }
+})
 
 // =============================================
 // 生命周期

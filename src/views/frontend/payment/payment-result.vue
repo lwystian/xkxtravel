@@ -40,11 +40,11 @@ const resultInfo = computed(() => {
         title: '支付失败',
         subTitle: '抱歉，您的支付未能完成，订单已保留，您可以稍后重新支付。'
       }
-    default:
+    default: // processing
       return {
         icon: 'info',
-        title: '处理中',
-        subTitle: '正在处理您的支付结果，请稍候...'
+        title: '支付确认中',
+        subTitle: '正在等待支付确认，请稍候...'
       }
   }
 })
@@ -52,17 +52,6 @@ const resultInfo = computed(() => {
 // 查询支付结果
 const checkPaymentResult = async () => {
   try {
-    // 优先使用URL中的status参数
-    const urlStatus = route.query.status
-    if (urlStatus === 'success') {
-      paymentStatus.value = 'success'
-      return
-    } else if (urlStatus === 'failed') {
-      paymentStatus.value = 'failed'
-      return
-    }
-
-    // 从URL获取支付宝回调参数（订单号）
     const outTradeNo = route.query.out_trade_no
 
     if (!outTradeNo) {
@@ -70,23 +59,24 @@ const checkPaymentResult = async () => {
       return
     }
 
-    // 查询订单状态
+    // 查询订单实际状态（始终查询，以获取最新状态）
     const order = await getOrderByOrderNo(outTradeNo)
 
     if (order) {
       paymentInfo.value = order
-      // 1表示已支付，支持字符串和数字比较
+      // 1表示已支付
       if (order.status == 1) {
         paymentStatus.value = 'success'
       } else {
-        paymentStatus.value = 'failed'
+        // 订单未支付，显示处理中并提示用户
+        paymentStatus.value = 'processing'
       }
     } else {
       paymentStatus.value = 'failed'
     }
   } catch (error) {
     console.error('查询支付结果失败:', error)
-    // 如果查询失败，根据URL参数判断
+    // 查询失败时，根据URL参数做初步判断
     const urlStatus = route.query.status
     if (urlStatus === 'success') {
       paymentStatus.value = 'success'

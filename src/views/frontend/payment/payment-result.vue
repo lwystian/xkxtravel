@@ -75,8 +75,8 @@ const checkPaymentResult = async () => {
 
     if (order) {
       paymentInfo.value = order
-      // 1表示已支付
-      if (order.status === 1) {
+      // 1表示已支付，支持字符串和数字比较
+      if (order.status == 1) {
         paymentStatus.value = 'success'
       } else {
         paymentStatus.value = 'failed'

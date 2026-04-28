@@ -11,11 +11,11 @@
         <el-form-item label="订单号">
           <el-input v-model="searchForm.orderNo" placeholder="请输入订单号" clearable></el-input>
         </el-form-item>
-        <el-form-item label="游客姓名">
-          <el-input v-model="searchForm.visitorName" placeholder="请输入游客姓名" clearable></el-input>
+        <el-form-item label="联系人">
+          <el-input v-model="searchForm.contactName" placeholder="请输入联系人姓名" clearable></el-input>
         </el-form-item>
         <el-form-item label="联系电话">
-          <el-input v-model="searchForm.visitorPhone" placeholder="请输入联系电话" clearable></el-input>
+          <el-input v-model="searchForm.contactPhone" placeholder="请输入联系电话" clearable></el-input>
         </el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="searchForm.status" placeholder="请选择订单状态" clearable>
@@ -47,15 +47,24 @@
         class="order-table"
       >
         <el-table-column prop="orderNo" label="订单号" width="180" />
-        <el-table-column prop="ticketName" label="行程名称" min-width="150" />
-        <el-table-column prop="visitorName" label="游客姓名" width="100" />
-        <el-table-column prop="visitorPhone" label="联系电话" width="120" />
-        <el-table-column prop="visitDate" label="游玩日期" width="100">
+        <el-table-column prop="tourName" label="行程名称" min-width="150" />
+        <el-table-column prop="packageName" label="套餐" width="100">
           <template #default="scope">
-            {{ formatDate(scope.row.visitDate) }}
+            {{ scope.row.packageName || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="quantity" label="数量" width="60" align="center" />
+        <el-table-column label="出发日期" width="100">
+          <template #default="scope">
+            {{ formatDate(scope.row.departureDate) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="人数" width="100" align="center">
+          <template #default="scope">
+            成人 {{ scope.row.adultCount }}<span v-if="scope.row.childCount"> / 儿童 {{ scope.row.childCount }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="contactName" label="联系人" width="100" />
+        <el-table-column prop="contactPhone" label="联系电话" width="120" />
         <el-table-column prop="totalAmount" label="总金额" width="100">
           <template #default="scope">
             <span class="amount">¥{{ scope.row.totalAmount }}</span>
@@ -73,14 +82,14 @@
             <span class="date-text">{{ formatTime(scope.row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button type="primary" size="small" plain @click="handleViewDetail(scope.row)" class="action-btn">
-              <i class="el-icon-view"></i> 查看详情
+              <i class="el-icon-view"></i> 详情
             </el-button>
-            <el-button 
+            <el-button
               v-if="scope.row.status === 1"
-              type="warning" 
+              type="warning"
               size="small"
               plain
               @click="handleRefund(scope.row)"
@@ -88,19 +97,9 @@
             >
               <i class="el-icon-money"></i> 退款
             </el-button>
-            <el-button 
-              v-if="scope.row.status === 1"
-              type="success" 
-              size="small"
-              plain
-              @click="handleComplete(scope.row)"
-              class="action-btn"
-            >
-              <i class="el-icon-check"></i> 标记完成
-            </el-button>
-            <el-button 
+            <el-button
               v-if="[2, 3, 4].includes(scope.row.status)"
-              type="danger" 
+              type="danger"
               size="small"
               plain
               @click="handleDelete(scope.row)"
@@ -131,76 +130,70 @@
     <el-dialog
       title="订单详情"
       v-model="detailDialogVisible"
-      width="650px"
+      width="700px"
       class="order-dialog"
     >
       <div class="order-detail" v-if="currentOrder">
-        <el-descriptions title="订单信息" :column="1" border>
-          <el-descriptions-item label="订单号">{{ currentOrder.orderNo }}</el-descriptions-item>
-          <el-descriptions-item label="行程名称">{{ currentOrder.ticketName }}</el-descriptions-item>
-          <el-descriptions-item label="景点名称">{{ currentOrder.scenicName }}</el-descriptions-item>
-          <el-descriptions-item label="游玩日期">{{ formatDate(currentOrder.visitDate) }}</el-descriptions-item>
-          <el-descriptions-item label="购买数量">{{ currentOrder.quantity }}</el-descriptions-item>
-          <el-descriptions-item label="订单金额">¥{{ currentOrder.totalAmount }}</el-descriptions-item>
-        </el-descriptions>
-        
-        <el-descriptions title="游客信息" :column="1" border style="margin-top: 20px">
-          <el-descriptions-item label="游客姓名">{{ currentOrder.visitorName }}</el-descriptions-item>
-          <el-descriptions-item label="联系电话">{{ currentOrder.visitorPhone }}</el-descriptions-item>
-          <el-descriptions-item label="身份证号">
-            {{ currentOrder.idCard || '未提供' }}
+        <el-descriptions title="行程订单信息" :column="2" border>
+          <el-descriptions-item label="订单号" :span="2">{{ currentOrder.orderNo }}</el-descriptions-item>
+          <el-descriptions-item label="行程名称" :span="2">{{ currentOrder.tourName }}</el-descriptions-item>
+          <el-descriptions-item label="套餐类型">{{ currentOrder.packageName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="批次套餐">{{ currentOrder.batchPackageName || '标准' }}</el-descriptions-item>
+          <el-descriptions-item label="出发日期">{{ formatDate(currentOrder.departureDate) }}</el-descriptions-item>
+          <el-descriptions-item label="成人人数">{{ currentOrder.adultCount }} 人</el-descriptions-item>
+          <el-descriptions-item label="儿童人数">{{ currentOrder.childCount || 0 }} 人</el-descriptions-item>
+          <el-descriptions-item label="成人单价">¥{{ currentOrder.adultUnitPrice || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="儿童单价">¥{{ currentOrder.childUnitPrice || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="行程费用">¥{{ currentOrder.tourAmount || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="酒店费用">
+            <template v-if="currentOrder.hotelAmount && currentOrder.hotelAmount > 0">
+              ¥{{ currentOrder.hotelAmount }}（{{ currentOrder.hotelName }} {{ currentOrder.hotelDays }}晚）
+            </template>
+            <template v-else>-</template>
+          </el-descriptions-item>
+          <el-descriptions-item label="总金额" :span="2">
+            <span class="amount">¥{{ currentOrder.totalAmount }}</span>
           </el-descriptions-item>
         </el-descriptions>
-        
+
+        <el-descriptions title="联系人信息" :column="1" border style="margin-top: 20px">
+          <el-descriptions-item label="联系人">{{ currentOrder.contactName }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentOrder.contactPhone }}</el-descriptions-item>
+          <el-descriptions-item label="备注">{{ currentOrder.remark || '无' }}</el-descriptions-item>
+        </el-descriptions>
+
         <el-descriptions title="订单状态" :column="1" border style="margin-top: 20px">
           <el-descriptions-item label="订单状态">
             <el-tag :type="getOrderStatusType(currentOrder.status)">
               {{ getOrderStatusText(currentOrder.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="下单时间">
-            {{ formatTime(currentOrder.createTime) }}
-          </el-descriptions-item>
+          <el-descriptions-item label="下单时间">{{ formatTime(currentOrder.createTime) }}</el-descriptions-item>
           <el-descriptions-item label="支付时间" v-if="currentOrder.paymentTime">
             {{ formatTime(currentOrder.paymentTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="支付方式" v-if="currentOrder.paymentMethod">
-            {{ getPaymentMethodText(currentOrder.paymentMethod) }}
+            {{ currentOrder.paymentMethod }}
           </el-descriptions-item>
         </el-descriptions>
-        
+
         <el-descriptions title="用户信息" :column="1" border style="margin-top: 20px">
           <el-descriptions-item label="用户ID">{{ currentOrder.userId }}</el-descriptions-item>
-          <el-descriptions-item label="用户名">{{ currentOrder.username }}</el-descriptions-item>
         </el-descriptions>
       </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="detailDialogVisible = false">关闭</el-button>
-          <el-button 
-            v-if="currentOrder && currentOrder.status === 1" 
-            type="warning" 
-            plain
-            @click="handleRefund(currentOrder)"
-          >
-            <i class="el-icon-money"></i> 退款
-          </el-button>
-          <el-button 
-            v-if="currentOrder && currentOrder.status === 1" 
-            type="success" 
-            plain
-            @click="handleComplete(currentOrder)"
-          >
-            <i class="el-icon-check"></i> 标记完成
-          </el-button>
-          <el-button 
-            v-if="currentOrder && [2, 3, 4].includes(currentOrder.status)" 
-            type="danger" 
-            plain
-            @click="handleDelete(currentOrder)"
-          >
-            <i class="el-icon-delete"></i> 删除
-          </el-button>
+          <template v-if="currentOrder && currentOrder.status === 1">
+            <el-button type="warning" plain @click="handleRefund(currentOrder)">
+              <i class="el-icon-money"></i> 退款
+            </el-button>
+          </template>
+          <template v-if="currentOrder && [2, 3, 4].includes(currentOrder.status)">
+            <el-button type="danger" plain @click="handleDelete(currentOrder)">
+              <i class="el-icon-delete"></i> 删除
+            </el-button>
+          </template>
         </span>
       </template>
     </el-dialog>
@@ -224,8 +217,8 @@ const loading = ref(false)
 // 搜索表单
 const searchForm = reactive({
   orderNo: '',
-  visitorName: '',
-  visitorPhone: '',
+  contactName: '',
+  contactPhone: '',
   status: null
 })
 
@@ -237,20 +230,18 @@ const detailDialogVisible = ref(false)
 const fetchOrders = async () => {
   loading.value = true
   try {
-    await request.get('/order/admin/page', {
+    const res = await request.get('/tour-order/all', {
       orderNo: searchForm.orderNo,
-      visitorName: searchForm.visitorName,
-      visitorPhone: searchForm.visitorPhone,
+      contactName: searchForm.contactName,
+      contactPhone: searchForm.contactPhone,
       status: searchForm.status,
       currentPage: currentPage.value,
       size: pageSize.value
     }, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        orderList.value = res.records || []
-        total.value = res.total || 0
-      }
+      showDefaultMsg: false
     })
+    orderList.value = res?.records || []
+    total.value = res?.total || 0
   } catch (error) {
     console.error('获取订单列表失败:', error)
   } finally {
@@ -267,8 +258,8 @@ const handleSearch = () => {
 // 重置搜索条件
 const resetSearch = () => {
   searchForm.orderNo = ''
-  searchForm.visitorName = ''
-  searchForm.visitorPhone = ''
+  searchForm.contactName = ''
+  searchForm.contactPhone = ''
   searchForm.status = null
   currentPage.value = 1
   fetchOrders()
@@ -288,15 +279,14 @@ const handleCurrentChange = (page) => {
 // 查看订单详情
 const handleViewDetail = async (row) => {
   try {
-    await request.get(`/order/${row.id}`, {}, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        currentOrder.value = res
-        detailDialogVisible.value = true
-      }
+    const res = await request.get(`/tour-order/${row.id}`, {}, {
+      showDefaultMsg: false
     })
+    currentOrder.value = res
+    detailDialogVisible.value = true
   } catch (error) {
     console.error('获取订单详情失败:', error)
+    ElMessage.error('获取订单详情失败')
   }
 }
 
@@ -308,40 +298,16 @@ const handleRefund = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await request.post(`/order/${row.id}/refund`, {}, {
-        successMsg: '订单退款成功',
-        onSuccess: () => {
-          fetchOrders()
-          if (detailDialogVisible.value) {
-            detailDialogVisible.value = false
-          }
-        }
+      await request.put(`/tour-order/${row.id}/refund`, {}, {
+        showDefaultMsg: false
       })
+      ElMessage.success('订单退款成功')
+      fetchOrders()
+      if (detailDialogVisible.value) {
+        detailDialogVisible.value = false
+      }
     } catch (error) {
       console.error('订单退款失败:', error)
-    }
-  }).catch(() => {})
-}
-
-// 完成订单操作
-const handleComplete = (row) => {
-  ElMessageBox.confirm(`确定要将订单"${row.orderNo}"标记为已完成吗？`, '确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await request.post(`/order/${row.id}/complete`, {}, {
-        successMsg: '订单已标记为完成',
-        onSuccess: () => {
-          fetchOrders()
-          if (detailDialogVisible.value) {
-            detailDialogVisible.value = false
-          }
-        }
-      })
-    } catch (error) {
-      console.error('标记订单完成失败:', error)
     }
   }).catch(() => {})
 }
@@ -354,15 +320,14 @@ const handleDelete = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await request.delete(`/order/${row.id}`, {
-        successMsg: '订单删除成功',
-        onSuccess: () => {
-          fetchOrders()
-          if (detailDialogVisible.value) {
-            detailDialogVisible.value = false
-          }
-        }
+      await request.delete(`/tour-order/${row.id}`, {
+        showDefaultMsg: false
       })
+      ElMessage.success('订单删除成功')
+      fetchOrders()
+      if (detailDialogVisible.value) {
+        detailDialogVisible.value = false
+      }
     } catch (error) {
       console.error('删除订单失败:', error)
     }
@@ -381,26 +346,16 @@ const getOrderStatusText = (status) => {
   return statusMap[status] || '未知状态'
 }
 
-// 获取订单状态类型（用于标签颜色）
+// 获取订单状态类型
 const getOrderStatusType = (status) => {
   const typeMap = {
-    0: 'warning',   // 待支付
-    1: 'success',   // 已支付
-    2: 'info',      // 已取消
-    3: 'danger',    // 已退款
-    4: 'primary'    // 已完成
+    0: 'warning',
+    1: 'success',
+    2: 'info',
+    3: 'danger',
+    4: 'primary'
   }
   return typeMap[status] || 'info'
-}
-
-// 获取支付方式文本
-const getPaymentMethodText = (method) => {
-  const methodMap = {
-    'WECHAT': '微信支付',
-    'ALIPAY': '支付宝',
-    'BANK_CARD': '银行卡'
-  }
-  return methodMap[method] || '未知方式'
 }
 
 // 格式化日期
@@ -432,14 +387,14 @@ onMounted(() => {
   .page-header {
     margin-bottom: 24px;
     text-align: left;
-    
+
     .page-title {
       font-size: 24px;
       color: #34495e;
       margin: 0 0 8px 0;
       font-weight: 500;
     }
-    
+
     .page-subtitle {
       font-size: 14px;
       color: #7f8c8d;
@@ -453,32 +408,32 @@ onMounted(() => {
     border-radius: 8px;
     background-color: #fff;
     box-shadow: none;
-    
+
     .search-form {
       padding: 10px 0;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      
+
       .el-form-item {
         margin-bottom: 0;
         margin-right: 16px;
       }
-      
+
       .search-btn {
         background-color: #3498db;
         border-color: #3498db;
-        
+
         &:hover, &:focus {
           background-color: #2980b9;
           border-color: #2980b9;
         }
       }
-      
+
       .reset-btn {
         color: #7f8c8d;
         border-color: #bdc3c7;
-        
+
         &:hover, &:focus {
           color: #34495e;
           border-color: #95a5a6;
@@ -487,19 +442,19 @@ onMounted(() => {
       }
     }
   }
-  
+
   .table-card {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: none;
-    
+
     .order-table {
       border-radius: 4px;
       overflow: hidden;
-      
+
       :deep(thead) {
         background-color: #ecf0f1;
-        
+
         th {
           background-color: #ecf0f1;
           color: #34495e;
@@ -507,25 +462,25 @@ onMounted(() => {
           padding: 12px 0;
         }
       }
-      
+
       :deep(tbody tr) {
         transition: all 0.3s;
-        
+
         &:hover {
           background-color: #f8f9fa;
         }
       }
-      
+
       .amount {
         font-weight: 600;
         color: #e74c3c;
       }
-      
+
       .date-text {
         color: #7f8c8d;
         font-size: 12px;
       }
-      
+
       .action-btn {
         margin-right: 5px;
       }
@@ -543,27 +498,27 @@ onMounted(() => {
     :deep(.el-dialog__header) {
       border-bottom: 1px solid #ecf0f1;
       padding: 20px;
-      
+
       .el-dialog__title {
         font-size: 18px;
         color: #34495e;
         font-weight: 500;
       }
     }
-    
+
     :deep(.el-dialog__body) {
       padding: 30px 20px;
     }
-    
+
     :deep(.el-dialog__footer) {
       border-top: 1px solid #ecf0f1;
       padding: 15px 20px;
     }
-    
+
     .dialog-footer {
       display: flex;
       justify-content: flex-end;
     }
   }
 }
-</style> 
+</style>

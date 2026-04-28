@@ -13,7 +13,7 @@
       <div class="order-info">
         <div class="info-row">
           <span>商品名称：</span>
-          <span>{{ orderInfo.ticketName }}</span>
+          <span>{{ orderInfo.tourName }}</span>
         </div>
         <div class="info-row">
           <span>订单号：</span>
@@ -61,16 +61,14 @@ const orderInfo = ref(null)
 const fetchOrderInfo = async () => {
   try {
     loading.value = true
-    await request.get(`/order/${route.params.id}`, {}, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        if (res) {
-          orderInfo.value = res
-        } else {
-          ElMessage.error('获取订单信息失败')
-        }
-      }
+    const res = await request.get(`/tour-order/${route.params.id}`, {}, {
+      showDefaultMsg: false
     })
+    if (res) {
+      orderInfo.value = res
+    } else {
+      ElMessage.error('获取订单信息失败')
+    }
   } catch (error) {
     console.error('获取订单信息失败:', error)
     ElMessage.error('获取订单信息失败')
@@ -85,18 +83,16 @@ const confirmPayment = async () => {
     ElMessage.error('订单信息错误')
     return
   }
-  
+
   paying.value = true
-  
+
   try {
-    await request.post(`/alipay/mock-pay/${route.params.id}`, {}, {
-      showDefaultMsg: false,
-      onSuccess: () => {
-        ElMessage.success('支付成功')
-        // 跳转到支付结果页面
-        router.push(`/payment/result?out_trade_no=${orderInfo.value.orderNo}&status=success`)
-      }
+    await request.post(`/tour-order-pay/mock-pay/${route.params.id}`, {}, {
+      showDefaultMsg: false
     })
+    ElMessage.success('支付成功')
+    // 跳转到支付结果页面
+    router.push(`/payment/result?out_trade_no=${orderInfo.value.orderNo}&status=success`)
   } catch (error) {
     console.error('支付失败:', error)
     ElMessage.error('支付失败，请重试')

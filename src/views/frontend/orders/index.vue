@@ -2,7 +2,6 @@
   <div class="orders-container">
     <!-- 页面头部容器 -->
     <div class="page-header-wrapper">
-    <!-- 现代化页面头部 -->
     <div class="page-header">
       <div class="header-content">
         <h1 class="page-title">
@@ -16,7 +15,7 @@
     </div>
     </div>
 
-    <!-- 现代化标签页区域 -->
+    <!-- 标签页区域 -->
     <div class="orders-section">
       <div class="section-container">
         <div class="orders-tabs">
@@ -102,7 +101,7 @@
             <div
               v-for="(order, index) in orderList"
               :key="order.id"
-              class="order-card "
+              class="order-card"
               :class="`delay-${(index % 4 + 1) * 100}`"
             >
               <div class="order-header">
@@ -121,10 +120,10 @@
               <div class="order-content">
                 <div class="ticket-section">
                   <div class="ticket-main">
-                    <h3 class="ticket-name">{{ order.ticketName }}</h3>
-                    <div class="scenic-info">
-                      <el-icon><MapLocation /></el-icon>
-                      <span>{{ order.scenicName }}</span>
+                    <h3 class="ticket-name">{{ order.tourName }}</h3>
+                    <div class="scenic-info" v-if="order.packageName">
+                      <el-icon><Collection /></el-icon>
+                      <span>{{ order.packageName }}</span>
                     </div>
                   </div>
 
@@ -132,26 +131,25 @@
                     <div class="detail-row">
                       <div class="detail-item">
                         <el-icon><Calendar /></el-icon>
-                        <span>游玩日期</span>
-                        <strong>{{ formatDate(order.visitDate) }}</strong>
+                        <span>出发日期</span>
+                        <strong>{{ formatDate(order.departureDate) }}</strong>
                       </div>
                       <div class="detail-item">
                         <el-icon><User /></el-icon>
-                        <span>数量</span>
-                        <strong>{{ order.quantity }} 张</strong>
+                        <span>出行人数</span>
+                        <strong>成人 {{ order.adultCount }} 人<span v-if="order.childCount">，儿童 {{ order.childCount }} 人</span></strong>
                       </div>
                     </div>
-
                     <div class="detail-row">
                       <div class="detail-item">
                         <el-icon><UserFilled /></el-icon>
-                        <span>游客</span>
-                        <strong>{{ order.visitorName }}</strong>
+                        <span>联系人</span>
+                        <strong>{{ order.contactName }}</strong>
                       </div>
                       <div class="detail-item">
                         <el-icon><Phone /></el-icon>
                         <span>联系电话</span>
-                        <strong>{{ order.visitorPhone }}</strong>
+                        <strong>{{ order.contactPhone }}</strong>
                       </div>
                     </div>
                   </div>
@@ -172,7 +170,7 @@
                   <el-button
                     v-if="order.status === 0"
                     type="primary"
-                    @click="payOrder(order)"
+                    @click="goToPay(order)"
                     class="action-btn pay-btn"
                   >
                     <el-icon><CreditCard /></el-icon>
@@ -188,7 +186,7 @@
                     取消订单
                   </el-button>
                   <el-button
-                    @click="viewOrderDetail(order.id)"
+                    @click="viewOrderDetail(order)"
                     class="action-btn detail-btn"
                   >
                     <el-icon><View /></el-icon>
@@ -198,7 +196,7 @@
               </div>
             </div>
 
-            <!-- 现代化分页 -->
+            <!-- 分页 -->
             <div class="pagination-wrapper" v-if="total > 0">
               <el-pagination
                 background
@@ -215,44 +213,6 @@
       </div>
     </div>
 
-    <!-- 支付对话框 -->
-    <el-dialog
-      title="订单支付"
-      v-model="payDialogVisible"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <div class="pay-dialog-content" v-if="currentOrder">
-        <div class="order-info">
-          <p><strong>订单号:</strong> {{ currentOrder.orderNo }}</p>
-          <p><strong>行程名称:</strong> {{ currentOrder.ticketName }}</p>
-          <p><strong>游玩日期:</strong> {{ formatDate(currentOrder.visitDate) }}</p>
-          <p><strong>数量:</strong> {{ currentOrder.quantity }}</p>
-          <p><strong>总金额:</strong> <span class="amount">¥{{ currentOrder.totalAmount }}</span></p>
-        </div>
-        <div class="payment-methods">
-          <h4>请选择支付方式</h4>
-          <el-radio-group v-model="paymentMethod">
-            <el-radio label="WECHAT">微信支付</el-radio>
-            <el-radio label="ALIPAY">支付宝</el-radio>
-            <el-radio label="BANK_CARD">银行卡</el-radio>
-          </el-radio-group>
-        </div>
-
-      </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="payDialogVisible = false">取消</el-button>
-          <template v-if="paymentMethod === 'ALIPAY'">
-            <el-button type="primary" @click="goToAlipay">去支付</el-button>
-          </template>
-          <template v-else>
-            <el-button type="primary" @click="confirmPayment">确认已支付</el-button>
-          </template>
-        </span>
-      </template>
-    </el-dialog>
-
     <!-- 详情对话框 -->
     <el-dialog
       title="订单详情"
@@ -262,27 +222,38 @@
       <div class="order-detail" v-if="currentOrder">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="订单号">{{ currentOrder.orderNo }}</el-descriptions-item>
-          <el-descriptions-item label="行程名称">{{ currentOrder.ticketName }}</el-descriptions-item>
-          <el-descriptions-item label="景点名称">{{ currentOrder.scenicName }}</el-descriptions-item>
-          <el-descriptions-item label="游玩日期">{{ formatDate(currentOrder.visitDate) }}</el-descriptions-item>
-          <el-descriptions-item label="购买数量">{{ currentOrder.quantity }}</el-descriptions-item>
-          <el-descriptions-item label="订单金额">¥{{ currentOrder.totalAmount }}</el-descriptions-item>
-          <el-descriptions-item label="游客姓名">{{ currentOrder.visitorName }}</el-descriptions-item>
-          <el-descriptions-item label="联系电话">{{ currentOrder.visitorPhone }}</el-descriptions-item>
-          <el-descriptions-item label="身份证号">
-            {{ currentOrder.idCard || '未提供' }}
+          <el-descriptions-item label="行程名称">{{ currentOrder.tourName }}</el-descriptions-item>
+          <el-descriptions-item label="套餐类型">{{ currentOrder.packageName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="批次套餐">{{ currentOrder.batchPackageName || '标准' }}</el-descriptions-item>
+          <el-descriptions-item label="出发日期">{{ formatDate(currentOrder.departureDate) }}</el-descriptions-item>
+          <el-descriptions-item label="成人人数">{{ currentOrder.adultCount }} 人</el-descriptions-item>
+          <el-descriptions-item label="儿童人数">{{ currentOrder.childCount || 0 }} 人</el-descriptions-item>
+          <el-descriptions-item label="成人单价">¥{{ currentOrder.adultUnitPrice }}</el-descriptions-item>
+          <el-descriptions-item label="儿童单价">¥{{ currentOrder.childUnitPrice || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="行程费用">¥{{ currentOrder.tourAmount }}</el-descriptions-item>
+          <el-descriptions-item label="酒店费用">
+            <template v-if="currentOrder.hotelAmount && currentOrder.hotelAmount > 0">
+              ¥{{ currentOrder.hotelAmount }}（{{ currentOrder.hotelName }} {{ currentOrder.hotelDays }}晚）
+            </template>
+            <template v-else>-</template>
           </el-descriptions-item>
+          <el-descriptions-item label="订单金额">
+            <span style="color: #e53e3e; font-weight: bold; font-size: 18px;">¥{{ currentOrder.totalAmount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="联系人">{{ currentOrder.contactName }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentOrder.contactPhone }}</el-descriptions-item>
+          <el-descriptions-item label="备注">{{ currentOrder.remark || '无' }}</el-descriptions-item>
           <el-descriptions-item label="订单状态">
-            {{ getOrderStatusText(currentOrder.status) }}
+            <el-tag :type="getStatusTagType(currentOrder.status)">
+              {{ getOrderStatusText(currentOrder.status) }}
+            </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="下单时间">
-            {{ formatTime(currentOrder.createTime) }}
-          </el-descriptions-item>
+          <el-descriptions-item label="下单时间">{{ formatTime(currentOrder.createTime) }}</el-descriptions-item>
           <el-descriptions-item label="支付时间" v-if="currentOrder.paymentTime">
             {{ formatTime(currentOrder.paymentTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="支付方式" v-if="currentOrder.paymentMethod">
-            {{ getPaymentMethodText(currentOrder.paymentMethod) }}
+            {{ currentOrder.paymentMethod }}
           </el-descriptions-item>
         </el-descriptions>
       </div>
@@ -291,11 +262,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/utils/request'
-
+import { getUserTourOrders, cancelTourOrder as cancelTourOrderApi } from '@/api/tourOrder'
 
 const router = useRouter()
 
@@ -310,12 +280,10 @@ const loading = ref(false)
 const activeTab = ref('all')
 
 // 对话框控制
-const payDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const currentOrder = ref(null)
-const paymentMethod = ref('')
 
-// 订单统计数据 - 改为从后端获取
+// 订单统计数据
 const orderStats = ref({
   total: 0,
   pending: 0,
@@ -328,19 +296,18 @@ const orderStats = ref({
 // 获取用户订单统计信息
 const fetchOrderStats = async () => {
   try {
-    await request.get('/order/my/stats', {}, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        orderStats.value = res || {
-          total: 0,
-          pending: 0,
-          paid: 0,
-          cancelled: 0,
-          refunded: 0,
-          completed: 0
-        }
-      }
-    })
+    // 获取全部订单用于统计
+    const allRes = await getUserTourOrders({ currentPage: 1, size: 1000 })
+    const allOrders = allRes?.records || []
+
+    orderStats.value = {
+      total: allRes?.total || 0,
+      pending: allOrders.filter(o => o.status === 0).length,
+      paid: allOrders.filter(o => o.status === 1).length,
+      cancelled: allOrders.filter(o => o.status === 2).length,
+      refunded: allOrders.filter(o => o.status === 3).length,
+      completed: allOrders.filter(o => o.status === 4).length
+    }
   } catch (error) {
     console.error('获取订单统计失败:', error)
   }
@@ -358,6 +325,18 @@ const getStatusClass = (status) => {
   return statusMap[status] || 'default'
 }
 
+// 获取状态标签类型
+const getStatusTagType = (status) => {
+  const typeMap = {
+    0: 'warning',
+    1: 'success',
+    2: 'info',
+    3: 'danger',
+    4: 'primary'
+  }
+  return typeMap[status] || 'info'
+}
+
 // 跳转到行程列表
 const goToTicketList = () => {
   router.push('/ticket')
@@ -367,19 +346,16 @@ const goToTicketList = () => {
 const fetchOrders = async () => {
   loading.value = true
   try {
-    const status = activeTab.value === 'all' ? '' : activeTab.value
-    
-    await request.get('/order/my', {
-      status,
+    // 根据标签页筛选状态
+    const status = activeTab.value === 'all' ? null : parseInt(activeTab.value)
+
+    const res = await getUserTourOrders({
+      status: status,
       currentPage: currentPage.value,
       size: pageSize.value
-    }, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        orderList.value = res?.records || []
-        total.value = res?.total || 0
-      }
     })
+    orderList.value = res?.records || []
+    total.value = res?.total || 0
   } catch (error) {
     console.error('获取订单列表失败:', error)
     orderList.value = []
@@ -413,81 +389,23 @@ const getOrderStatusText = (status) => {
   return statusMap[status] || '未知状态'
 }
 
-// 获取支付方式文本
-const getPaymentMethodText = (method) => {
-  const methodMap = {
-    'WECHAT': '微信支付',
-    'ALIPAY': '支付宝',
-    'BANK_CARD': '银行卡'
-  }
-  return methodMap[method] || '未知方式'
-}
-
 // 格式化日期
 const formatDate = (dateStr) => {
-  if (!dateStr) return ''
+  if (!dateStr) return '-'
   const date = new Date(dateStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 // 格式化时间
 const formatTime = (timeStr) => {
-  if (!timeStr) return ''
+  if (!timeStr) return '-'
   const date = new Date(timeStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
 }
 
-// 支付订单
-const payOrder = (order) => {
-  if (!order || !order.id) {
-    ElMessage.error('订单数据无效')
-    return
-  }
-  currentOrder.value = order
-  paymentMethod.value = '' // 重置支付方式选择
-  payDialogVisible.value = true
-}
-
-// 确认支付
-const confirmPayment = async () => {
-  if (!paymentMethod.value) {
-    ElMessage.warning('请选择支付方式')
-    return
-  }
-  
-  if (!currentOrder.value || !currentOrder.value.id) {
-    ElMessage.error('订单数据无效')
-    payDialogVisible.value = false
-    return
-  }
-
-  loading.value = true
-  try {
-    await request.post(`/order/${currentOrder.value.id}/pay`, null, {
-      params: {
-        paymentMethod: paymentMethod.value
-      },
-      successMsg: '支付成功',
-      onSuccess: () => {
-        payDialogVisible.value = false
-        fetchOrders()  // 重新加载订单列表
-      }
-    })
-  } catch (error) {
-    console.error('支付订单失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-// 跳转到支付宝支付页面
-const goToAlipay = () => {
-  if (currentOrder.value && currentOrder.value.id) {
-    payDialogVisible.value = false;
-    router.push(`/payment/alipay/${currentOrder.value.id}`)
-  } else {
-    ElMessage.error('订单信息错误')
-  }
+// 跳转到支付页面
+const goToPay = (order) => {
+  router.push('/tour-order-pay/' + order.id)
 }
 
 // 取消订单
@@ -499,12 +417,10 @@ const cancelOrder = async (orderId) => {
   }).then(async () => {
     loading.value = true
     try {
-      await request.post(`/order/${orderId}/cancel`, {}, {
-        successMsg: '订单已取消',
-        onSuccess: () => {
-          fetchOrders()  // 重新加载订单列表
-        }
-      })
+      await cancelTourOrderApi(orderId)
+      ElMessage.success('订单已取消')
+      fetchOrders()
+      fetchOrderStats()
     } catch (error) {
       console.error('取消订单失败:', error)
     } finally {
@@ -514,31 +430,13 @@ const cancelOrder = async (orderId) => {
 }
 
 // 查看订单详情
-const viewOrderDetail = async (orderId) => {
-  loading.value = true
-  try {
-    await request.get(`/order/${orderId}`, {}, {
-      showDefaultMsg: false,
-      onSuccess: (res) => {
-        if (res) {
-          currentOrder.value = res
-          detailDialogVisible.value = true
-        } else {
-          ElMessage.error('获取订单详情失败')
-        }
-      }
-    })
-  } catch (error) {
-    console.error('获取订单详情失败:', error)
-    ElMessage.error('获取订单详情失败')
-  } finally {
-    loading.value = false
-  }
+const viewOrderDetail = async (order) => {
+  currentOrder.value = order
+  detailDialogVisible.value = true
 }
 
 // 页面加载时获取订单列表
 onMounted(() => {
-  // 页面加载时获取统计数据和订单列表
   fetchOrderStats()
   fetchOrders()
 })
@@ -551,21 +449,18 @@ onMounted(() => {
   font-family: "思源黑体", "Source Han Sans", "Noto Sans CJK SC", sans-serif;
   color: #333;
 
-  // 通用容器样式
   .section-container {
     max-width: 1300px;
     margin: 0 auto;
     padding: 40px 20px;
   }
 
-  // 页面头部容器
   .page-header-wrapper {
     max-width: 1300px;
     margin: 0 auto;
     padding: 40px 20px 0;
   }
 
-  // 页面头部
   .page-header {
     display: flex;
     justify-content: space-between;
@@ -600,10 +495,6 @@ onMounted(() => {
     margin: 0;
   }
 
-
-
-
-  // 订单区域
   .orders-section {
     background: white;
     margin: 0;
@@ -618,7 +509,6 @@ onMounted(() => {
     border: 1px solid #e2e8f0;
   }
 
-  // 现代化标签页样式
   .modern-tabs {
     :deep(.el-tabs__header) {
       margin: 0;
@@ -672,12 +562,10 @@ onMounted(() => {
     }
   }
 
-  // 加载状态
   .loading-state {
     padding: 40px 20px;
   }
 
-  // 空状态
   .empty-state {
     text-align: center;
     padding: 80px 20px;
@@ -709,7 +597,6 @@ onMounted(() => {
     }
   }
 
-  // 订单列表
   .orders-list {
     display: flex;
     flex-direction: column;
@@ -943,7 +830,6 @@ onMounted(() => {
     }
   }
 
-  // 分页样式
   .pagination-wrapper {
     display: flex;
     justify-content: center;
@@ -980,31 +866,5 @@ onMounted(() => {
       }
     }
   }
-
- 
-  .hover-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  // 延迟动画类
-  .delay-100 { animation-delay: 0.1s; }
-  .delay-200 { animation-delay: 0.2s; }
-  .delay-300 { animation-delay: 0.3s; }
-  .delay-400 { animation-delay: 0.4s; }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
- 
-
 }
-
 </style>

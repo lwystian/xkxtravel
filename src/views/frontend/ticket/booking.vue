@@ -367,6 +367,128 @@
                 <span class="total-value">¥{{ totalPrice }}</span>
               </div>
             </div>
+
+            <!-- 酒店预订选项 - 人数选择完成后显示 -->
+            <div v-if="adultCount > 0" class="hotel-booking-section">
+              <div class="hotel-header" @click="toggleHotelSection">
+                <div class="hotel-title">
+                  <span class="hotel-icon">🏨</span>
+                  <span class="hotel-label">酒店预订</span>
+                  <el-tag v-if="selectedHotel" type="success" size="small" effect="plain">已选择</el-tag>
+                  <el-tag v-else size="small" effect="plain">可选</el-tag>
+                </div>
+                <div class="hotel-toggle">
+                  <span class="toggle-text">{{ isHotelExpanded ? '收起' : '展开' }}</span>
+                  <span :class="['toggle-arrow', { expanded: isHotelExpanded }]">▼</span>
+                </div>
+              </div>
+
+              <transition name="slide-fade">
+                <div v-show="isHotelExpanded" class="hotel-content">
+                  <div class="hotel-options-wrapper">
+                    <div class="hotel-option" v-if="!selectedHotel">
+                      <el-select
+                        v-model="selectedHotelId"
+                        placeholder="请选择酒店"
+                        size="default"
+                        class="hotel-select"
+                        @change="handleHotelSelect"
+                      >
+                        <el-option
+                          v-for="hotel in availableHotels"
+                          :key="hotel.accommodationId"
+                          :label="hotel.name"
+                          :value="hotel.accommodationId"
+                        >
+                          <div class="hotel-option-content">
+                            <div class="hotel-option-left">
+                              <img v-if="hotel.imageUrl" :src="hotel.imageUrl" class="hotel-option-img" />
+                              <div v-else class="hotel-option-img-placeholder">🏨</div>
+                              <div class="hotel-option-info">
+                                <div class="hotel-option-name">{{ hotel.name }}</div>
+                                <div class="hotel-option-meta">
+                                  <span class="hotel-option-type">{{ hotel.type }}</span>
+                                  <span v-if="hotel.starLevel" class="hotel-option-rating">
+                                    <span class="star">★</span> {{ hotel.starLevel }}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="hotel-option-right">
+                              <span class="hotel-option-price">¥{{ formatHotelPrice(hotel.priceRange) }}/晚</span>
+                              <el-button type="primary" size="small" link class="hotel-detail-link" @click.stop="viewHotelDetail(hotel.accommodationId)">详情</el-button>
+                            </div>
+                          </div>
+                        </el-option>
+                      </el-select>
+                    </div>
+
+                    <div v-if="selectedHotel" class="hotel-selected-info">
+                      <div class="hotel-card">
+                        <div class="hotel-card-left">
+                          <img v-if="selectedHotel.imageUrl" :src="selectedHotel.imageUrl" class="hotel-thumb" />
+                          <div v-else class="hotel-thumb-placeholder">
+                            <span>🏨</span>
+                          </div>
+                        </div>
+                        <div class="hotel-card-info">
+                          <div class="hotel-info-top">
+                            <span class="hotel-name">{{ selectedHotel.name }}</span>
+                            <el-button type="primary" size="small" link class="hotel-detail-btn" @click="viewHotelDetail(selectedHotel.accommodationId)">酒店详情</el-button>
+                          </div>
+                          <div class="hotel-meta">
+                            <span class="hotel-type">{{ selectedHotel.type }}</span>
+                            <span class="hotel-rating" v-if="selectedHotel.starLevel">
+                              <span class="star">★</span> {{ selectedHotel.starLevel }}
+                            </span>
+                          </div>
+                          <div class="hotel-price-row">
+                            <span class="hotel-unit-price">¥{{ hotelPricePerNight }} / 晚</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="hotel-config">
+                        <div class="config-item">
+                          <span class="config-label">预订天数</span>
+                          <div class="number-input small">
+                            <button class="num-btn" @click="decreaseHotelDays">-</button>
+                            <input type="text" v-model.number="hotelBookingDays" readonly />
+                            <button class="num-btn" @click="increaseHotelDays">+</button>
+                          </div>
+                          <span class="config-unit">天</span>
+                        </div>
+
+                        <div class="config-item">
+                          <span class="config-label">每晚价格</span>
+                          <span class="config-value">¥{{ hotelPricePerNight }} / 晚</span>
+                        </div>
+                      </div>
+
+                      <div class="hotel-summary">
+                        <div class="summary-row">
+                          <span>酒店费用：</span>
+                          <span class="summary-value">¥{{ hotelTotalPrice }}</span>
+                          <span class="summary-note">（已计入订单总价）</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="hotel-actions">
+                      <el-button
+                        v-if="selectedHotel"
+                        type="danger"
+                        size="small"
+                        plain
+                        @click="removeHotelSelection"
+                      >
+                        移除酒店
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+              </transition>
+            </div>
           </div>
           <button class="submit-btn" @click="handleBooking">立刻报名</button>
         </div>
@@ -478,6 +600,14 @@ const showAdultDropdown = ref(false)
 const showChildDropdown = ref(false)
 const currentBatch = ref(null)
 
+// 酒店预订相关
+const availableHotels = ref([])
+const selectedHotelId = ref(null)
+const selectedHotel = ref(null)
+const hotelBookingDays = ref(1)
+const hotelPricePerNight = ref(0)
+const isHotelExpanded = ref(false)
+
 // 加载状态
 const loading = ref(false)
 
@@ -528,7 +658,16 @@ const currentFinalChildPrice = computed(() => {
 const totalPrice = computed(() => {
   const adultTotal = adultCount.value * currentFinalAdultPrice.value
   const childTotal = hasChildPrice.value ? childCount.value * currentFinalChildPrice.value : 0
-  return adultTotal + childTotal
+  let hotelTotal = 0
+  if (selectedHotel.value) {
+    hotelTotal = hotelBookingDays.value * hotelPricePerNight.value
+  }
+  return adultTotal + childTotal + hotelTotal
+})
+
+// 酒店总费用
+const hotelTotalPrice = computed(() => {
+  return hotelBookingDays.value * hotelPricePerNight.value
 })
 
 // =============================================
@@ -764,6 +903,51 @@ const setChildCount = (num) => {
   showChildDropdown.value = false
 }
 
+// 酒店预订相关方法
+const toggleHotelSection = () => {
+  isHotelExpanded.value = !isHotelExpanded.value
+}
+
+const handleHotelSelect = (accommodationId) => {
+  const hotel = availableHotels.value.find(h => h.accommodationId === accommodationId)
+  if (hotel) {
+    selectedHotel.value = hotel
+    // 从价格区间中提取价格
+    const priceMatch = hotel.priceRange?.match(/(\d+)/)
+    hotelPricePerNight.value = priceMatch ? parseInt(priceMatch[1]) : 0
+    // 默认预订天数等于行程天数
+    hotelBookingDays.value = productInfo.value.days || 1
+  }
+}
+
+const removeHotelSelection = () => {
+  selectedHotelId.value = null
+  selectedHotel.value = null
+  hotelBookingDays.value = 1
+  hotelPricePerNight.value = 0
+}
+
+const increaseHotelDays = () => {
+  if (hotelBookingDays.value < 30) hotelBookingDays.value++
+}
+
+const decreaseHotelDays = () => {
+  if (hotelBookingDays.value > 1) hotelBookingDays.value--
+}
+
+// 格式化酒店价格
+const formatHotelPrice = (priceRange) => {
+  if (!priceRange) return '0'
+  // 从价格区间中提取数字
+  const match = priceRange.match(/(\d+)/)
+  return match ? match[1] : '0'
+}
+
+// 查看酒店详情
+const viewHotelDetail = (accommodationId) => {
+  window.open(`/accommodation/${accommodationId}`, '_blank')
+}
+
 const initDefaultSelection = () => {
   if (batchDates.value.length > 0) {
     // 默认选中第一个可报名的批次
@@ -821,6 +1005,17 @@ const fetchProductDetail = async () => {
 
       // 标签
       productTags.value = data.tags || []
+
+      // 可选酒店列表
+      availableHotels.value = (data.availableHotels || []).map(hotel => ({
+        id: hotel.id,
+        accommodationId: hotel.accommodationId || hotel.accommodation_id,
+        name: hotel.name,
+        type: hotel.type || '酒店',
+        priceRange: hotel.priceRange,
+        starLevel: hotel.starLevel,
+        imageUrl: hotel.imageUrl
+      }))
 
       // 产品特色
       productFeatures.value = data.features || []
@@ -950,6 +1145,19 @@ const handleBooking = async () => {
     childCount: hasChildPrice.value ? childCount.value : 0
   }
 
+  // 构建确认信息
+  let hotelInfoStr = ''
+  if (selectedHotel.value) {
+    orderData.hotelId = selectedHotel.value.accommodationId
+    orderData.hotelName = selectedHotel.value.name
+    orderData.hotelDays = hotelBookingDays.value
+    orderData.hotelPricePerNight = hotelPricePerNight.value
+    orderData.hotelTotalPrice = hotelTotalPrice.value
+    hotelInfoStr = `酒店住宿：${selectedHotel.value.name}\n` +
+      `预订天数：${hotelBookingDays.value}晚 × ¥${hotelPricePerNight.value}/晚\n` +
+      `酒店费用：¥${hotelTotalPrice.value}\n`
+  }
+
   try {
     await ElMessageBox.confirm(
       `请确认订单信息：\n\n` +
@@ -958,6 +1166,7 @@ const handleBooking = async () => {
       `出发日期：${selectedBatchDate.value}\n` +
       `成人：${adultCount.value}人 × ¥${currentFinalAdultPrice.value}\n` +
       `${hasChildPrice.value ? `儿童：${childCount.value}人 × ¥${currentFinalChildPrice.value}\n` : ''}` +
+      `${hotelInfoStr}` +
       `────────────────\n` +
       `预计总额：¥${totalPrice.value}\n\n` +
       `（最终价格以系统计算为准）`,
@@ -1976,6 +2185,461 @@ onMounted(() => {
   }
   .price-note {
     padding-left: 0;
+  }
+}
+
+/* 酒店预订样式 */
+.hotel-booking-section {
+  width: 100%;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #fffcf8 0%, #fff 100%);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.hotel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.hotel-header:hover {
+  background: rgba(255, 102, 0, 0.05);
+}
+
+.hotel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotel-icon {
+  font-size: 18px;
+}
+
+.hotel-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.hotel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle-text {
+  font-size: 12px;
+  color: #999;
+}
+
+.toggle-arrow {
+  font-size: 10px;
+  color: #999;
+  transition: transform 0.3s;
+}
+
+.toggle-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.hotel-content {
+  padding: 0 16px 16px;
+}
+
+.hotel-options-wrapper {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+}
+
+.hotel-select {
+  width: 100%;
+}
+
+.hotel-select :deep(.el-input__wrapper) {
+  border-radius: 6px;
+  padding: 4px 11px;
+}
+
+.hotel-option-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.hotel-option-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hotel-option-img {
+  width: 50px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.hotel-option-img-placeholder {
+  width: 50px;
+  height: 38px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.hotel-option-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hotel-option-name {
+  font-size: 14px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hotel-option-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.hotel-option-type {
+  font-size: 11px;
+  color: #999;
+  background: #f5f5f5;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.hotel-option-rating {
+  font-size: 11px;
+  color: #f60;
+}
+
+.hotel-option-rating .star {
+  color: #ffb800;
+}
+
+.hotel-option-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.hotel-option-price {
+  font-size: 14px;
+  color: #f60;
+  font-weight: 600;
+}
+
+.hotel-detail-link {
+  font-size: 12px !important;
+  padding: 0 !important;
+}
+
+.hotel-selected-info {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hotel-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+.hotel-card-left {
+  flex-shrink: 0;
+}
+
+.hotel-thumb {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  margin-top: 28px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.hotel-thumb-placeholder {
+  width: 80px;
+  height: 60px;
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.hotel-card-info {
+  flex: 1;
+  min-width: 0;
+  /* 移除固定高度，让内容自然撑开 */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;  /* 增加间距，让三行内容更清晰 */
+}
+
+.hotel-info-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hotel-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.hotel-detail-btn {
+  flex-shrink: 0;
+  font-size: 12px !important;
+  padding: 0 !important;
+  margin-left: 8px;
+}
+
+.hotel-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.hotel-type {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.hotel-rating {
+  color: #f60;
+}
+
+.hotel-rating .star {
+  color: #ffb800;
+}
+
+.hotel-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.hotel-unit-price {
+  font-size: 14px;
+  color: #f60;
+  font-weight: 600;
+}
+
+.hotel-config {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px;
+  background: #fff;
+  border: 1px dashed #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-label {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.config-unit {
+  font-size: 12px;
+  color: #999;
+}
+
+.number-input.small {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.number-input.small input {
+  width: 40px;
+  text-align: center;
+  border: none;
+  border-left: 1px solid #ddd;
+  border-right: 1px solid #ddd;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.number-input.small .num-btn {
+  padding: 4px 10px;
+  background: #f5f5f5;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.number-input.small .num-btn:hover {
+  background: #e0e0e0;
+}
+
+.price-input {
+  width: 120px;
+}
+
+.price-input :deep(.el-input__inner) {
+  text-align: center;
+}
+
+.hotel-summary {
+  background: linear-gradient(135deg, #fff9f0 0%, #fff 100%);
+  border: 1px solid #ffe0c0;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f60;
+  margin-left: 8px;
+}
+
+.summary-note {
+  font-size: 12px;
+  color: #52c41a;
+  margin-left: 8px;
+}
+
+.summary-total {
+  font-size: 12px;
+  color: #999;
+  text-align: right;
+}
+
+.config-value {
+  font-size: 14px;
+  color: #f60;
+  font-weight: 600;
+}
+
+.hotel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.include-checkbox {
+  font-size: 13px;
+}
+
+.checkbox-label {
+  color: #666;
+}
+
+/* 过渡动画 */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+/* Element Plus 标签样式调整 */
+.hotel-booking-section :deep(.el-tag) {
+  border-radius: 4px;
+}
+
+.hotel-booking-section :deep(.el-tag--success) {
+  background: #f6ffed;
+  border-color: #b7eb8f;
+  color: #52c41a;
+}
+
+/* 响应式适配 */
+@media (max-width: 480px) {
+  .hotel-config {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .hotel-card {
+    flex-direction: column;
+  }
+
+  .hotel-thumb {
+    width: 100%;
+    height: 120px;
+  }
+
+  .hotel-thumb-placeholder {
+    width: 100%;
+    height: 80px;
   }
 }
 </style>

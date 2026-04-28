@@ -234,6 +234,84 @@
           </div>
         </div>
       </el-tab-pane>
+
+      <!-- 酒店预订 -->
+      <el-tab-pane label="酒店预订" name="hotelBooking">
+        <div class="hotel-booking-section">
+          <div class="section-header">
+            <span class="section-title">配套酒店选择</span>
+            <div class="header-actions">
+              <el-button type="primary" size="small" @click="showAddHotel">
+                <el-icon><Plus /></el-icon> 添加酒店
+              </el-button>
+            </div>
+          </div>
+
+          <el-table :data="tourHotels" border style="width: 100%" size="small" class="hotel-table">
+            <el-table-column label="酒店信息" min-width="200">
+              <template #default="scope">
+                <div class="hotel-info-cell">
+                  <img v-if="scope.row.imageUrl" :src="scope.row.imageUrl" class="hotel-thumb" />
+                  <div v-else class="hotel-thumb-placeholder">🏨</div>
+                  <div class="hotel-details">
+                    <div class="hotel-name">{{ scope.row.name }}</div>
+                    <div class="hotel-meta">
+                      <el-tag size="small" type="info">{{ scope.row.type }}</el-tag>
+                      <span v-if="scope.row.starLevel" class="hotel-rating">
+                        <span class="star">★</span> {{ scope.row.starLevel }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="价格/晚" width="120">
+              <template #default="scope">
+                <span class="price-text">¥{{ scope.row.pricePerNight }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="预订天数" width="150">
+              <template #default="scope">
+                <el-input-number
+                  v-model="scope.row.days"
+                  :min="1"
+                  :max="30"
+                  size="small"
+                  @change="handleHotelDaysChange(scope.row)"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="总价" width="120">
+              <template #default="scope">
+                <span class="total-price">¥{{ (scope.row.pricePerNight * scope.row.days).toFixed(2) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="80">
+              <template #default="scope">
+                <el-switch
+                  v-model="scope.row.enabled"
+                  :active-value="1"
+                  :inactive-value="0"
+                  @change="handleHotelEnabledChange(scope.row)"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120">
+              <template #default="scope">
+                <div class="table-actions">
+                  <el-button type="primary" size="small" @click="editHotel(scope.row)">编辑</el-button>
+                  <el-button type="danger" size="small" @click="deleteHotel(scope.row)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="hotel-tip">
+            <el-icon><InfoFilled /></el-icon>
+            <span>酒店将作为行程可选配套服务，用户在预订时可选择是否包含酒店住宿。支持自定义每晚价格和预订天数。</span>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <div class="dialog-footer">
@@ -400,13 +478,69 @@
         <el-button type="primary" @click="submitRemaining">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 添加/编辑酒店对话框 -->
+    <el-dialog
+      :title="isHotelEdit ? '编辑酒店' : '添加酒店'"
+      v-model="hotelDialogVisible"
+      width="550px"
+      append-to-body
+    >
+      <el-form ref="hotelFormRef" :model="hotelForm" label-width="100px">
+        <el-form-item label="选择酒店" prop="accommodationId">
+          <el-select
+            v-model="hotelForm.accommodationId"
+            placeholder="请选择住宿"
+            filterable
+            style="width: 100%;"
+            @change="handleAccommodationSelect"
+          >
+            <el-option
+              v-for="acc in accommodationList"
+              :key="acc.id"
+              :label="acc.name"
+              :value="acc.id"
+            >
+              <div class="accommodation-option">
+                <span>{{ acc.name }}</span>
+                <span class="accommodation-type">{{ acc.type }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="酒店名称">
+          <el-input v-model="hotelForm.name" placeholder="自动填充或手动输入" />
+        </el-form-item>
+
+        <el-form-item label="酒店类型">
+          <el-input v-model="hotelForm.type" placeholder="如：豪华酒店、经济型" />
+        </el-form-item>
+
+        <el-form-item label="每晚价格">
+          <el-input-number v-model="hotelForm.pricePerNight" :precision="2" :min="0" :step="50" style="width: 100%;" />
+        </el-form-item>
+
+        <el-form-item label="预订天数">
+          <el-input-number v-model="hotelForm.days" :min="1" :max="30" style="width: 100%;" />
+        </el-form-item>
+
+        <el-form-item label="状态">
+          <el-switch v-model="hotelForm.enabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="hotelDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitHotel" :loading="hotelLoading">确定</el-button>
+      </template>
+    </el-dialog>
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Upload } from '@element-plus/icons-vue'
+import { Plus, Upload, InfoFilled } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {
   getTourPackages,
@@ -492,6 +626,28 @@ const newRemaining = ref(0)
 const notice = ref('')
 const noticeLoading = ref(false)
 
+// 产品信息（用于默认值）
+const productInfo = ref({ days: 1 })
+
+// 酒店预订
+const tourHotels = ref([])
+const hotelDialogVisible = ref(false)
+const isHotelEdit = ref(false)
+const hotelLoading = ref(false)
+const hotelFormRef = ref(null)
+const accommodationList = ref([])
+const hotelForm = ref({
+  id: null,
+  accommodationId: null,
+  name: '',
+  type: '',
+  pricePerNight: 0,
+  days: 1,
+  enabled: 1,
+  imageUrl: '',
+  starLevel: null
+})
+
 watch(() => props.modelValue, (val) => {
   dialogVisible.value = val
   if (val && props.tourId) {
@@ -510,8 +666,10 @@ const loadAllData = async () => {
       fetchTourDetail(),
       fetchTripPackages(),
       fetchBatchPackages(),
-      fetchBatches()
+      fetchBatches(),
+      fetchAccommodationList()
     ])
+    await fetchTourHotels()
   } finally {
     loading.value = false
   }
@@ -530,6 +688,12 @@ const fetchTourDetail = async () => {
       videoPoster.value = res.video?.poster || ''
       // 出团通知
       notice.value = res.tour?.notice || ''
+      // 产品信息
+      if (res.tour) {
+        productInfo.value = {
+          days: res.tour.days || 1
+        }
+      }
     }
   } catch (error) {
     console.error('获取行程详情失败:', error)
@@ -911,6 +1075,132 @@ const handleRemoveVideo = () => {
   videoPoster.value = ''
   saveVideo()
 }
+
+// ==================== 酒店预订管理 ====================
+
+// 获取可选住宿列表
+const fetchAccommodationList = async () => {
+  try {
+    const res = await request.get('/accommodation/page', { currentPage: 1, size: 1000 })
+    accommodationList.value = res?.records || []
+  } catch (error) {
+    console.error('获取住宿列表失败:', error)
+  }
+}
+
+// 获取行程关联的酒店
+const fetchTourHotels = async () => {
+  try {
+    const res = await request.get(`/tour-hotel/${props.tourId}`, {}, { showDefaultMsg: false })
+    tourHotels.value = res || []
+  } catch (error) {
+    console.error('获取行程酒店失败:', error)
+    tourHotels.value = []
+  }
+}
+
+// 显示添加酒店对话框
+const showAddHotel = () => {
+  isHotelEdit.value = false
+  hotelForm.value = {
+    id: null,
+    accommodationId: null,
+    name: '',
+    type: '',
+    pricePerNight: 0,
+    days: productInfo.value.days || 1,
+    enabled: 1,
+    imageUrl: '',
+    starLevel: null
+  }
+  hotelDialogVisible.value = true
+}
+
+// 编辑酒店
+const editHotel = (row) => {
+  isHotelEdit.value = true
+  hotelForm.value = { ...row }
+  hotelDialogVisible.value = true
+}
+
+// 选择住宿时自动填充信息
+const handleAccommodationSelect = (accommodationId) => {
+  const accommodation = accommodationList.value.find(acc => acc.id === accommodationId)
+  if (accommodation) {
+    hotelForm.value.name = accommodation.name
+    hotelForm.value.type = accommodation.type
+    hotelForm.value.imageUrl = accommodation.imageUrl
+    hotelForm.value.starLevel = accommodation.starLevel
+    // 从价格区间提取价格
+    const priceMatch = accommodation.priceRange?.match(/(\d+)/)
+    if (priceMatch) {
+      hotelForm.value.pricePerNight = parseInt(priceMatch[1])
+    }
+  }
+}
+
+// 提交酒店
+const submitHotel = async () => {
+  if (!hotelForm.value.name) {
+    ElMessage.warning('请输入酒店名称')
+    return
+  }
+  hotelLoading.value = true
+  try {
+    const data = {
+      ...hotelForm.value,
+      tourId: props.tourId
+    }
+    if (isHotelEdit.value) {
+      await request.put(`/tour-hotel/${hotelForm.value.id}`, data)
+    } else {
+      await request.post('/tour-hotel', data)
+    }
+    ElMessage.success('保存成功')
+    hotelDialogVisible.value = false
+    fetchTourHotels()
+  } catch (error) {
+    console.error('保存酒店失败:', error)
+  } finally {
+    hotelLoading.value = false
+  }
+}
+
+// 删除酒店
+const deleteHotel = (row) => {
+  ElMessageBox.confirm(`删除酒店"${row.name}"?`, '提示', { type: 'warning' })
+    .then(async () => {
+      await request.delete(`/tour-hotel/${row.id}`)
+      ElMessage.success('删除成功')
+      fetchTourHotels()
+    }).catch(() => {})
+}
+
+// 酒店天数变化
+const handleHotelDaysChange = async (row) => {
+  try {
+    await request.put(`/tour-hotel/${row.id}`, {
+      ...row,
+      tourId: props.tourId
+    })
+  } catch (error) {
+    console.error('更新酒店天数失败:', error)
+    fetchTourHotels()
+  }
+}
+
+// 酒店启用状态变化
+const handleHotelEnabledChange = async (row) => {
+  try {
+    await request.put(`/tour-hotel/${row.id}`, {
+      ...row,
+      tourId: props.tourId
+    })
+  } catch (error) {
+    console.error('更新酒店状态失败:', error)
+    fetchTourHotels()
+  }
+}
 </script>
 
 <style scoped>
@@ -1044,5 +1334,109 @@ const handleRemoveVideo = () => {
 .dialog-footer {
   margin-top: 20px;
   text-align: right;
+}
+
+/* 酒店预订样式 */
+.hotel-booking-section {
+  padding: 10px 0;
+}
+
+.hotel-table {
+  margin-bottom: 15px;
+}
+
+.hotel-info-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hotel-thumb {
+  width: 60px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+.hotel-thumb-placeholder {
+  width: 60px;
+  height: 45px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.hotel-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.hotel-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.hotel-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotel-rating {
+  font-size: 12px;
+  color: #f60;
+}
+
+.hotel-rating .star {
+  color: #ffb800;
+}
+
+.price-text {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.total-price {
+  color: #f60;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.hotel-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.hotel-tip .el-icon {
+  color: #409eff;
+}
+
+/* 住宿选择框样式 */
+.accommodation-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accommodation-type {
+  font-size: 12px;
+  color: #999;
+}
+
+.table-actions {
+  display: flex;
+  gap: 4px;
 }
 </style>

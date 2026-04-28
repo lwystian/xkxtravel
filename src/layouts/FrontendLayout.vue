@@ -1372,6 +1372,8 @@ onMounted(() => {
     font-size: 16px;
     height: 50px;
     line-height: 50px;
+    padding: 0 20px;
+    margin-right: 0;
 
     &:hover, &.is-active {
       color: #e94560;
@@ -1388,6 +1390,14 @@ onMounted(() => {
     &:hover .el-icon {
       color: #e94560;
     }
+  }
+
+  :deep(.el-menu-item) {
+    margin-right: 20px;
+  }
+
+  :deep(.el-sub-menu) {
+    margin-right: 20px;
   }
 
   // 隐藏sub-menu的箭头
@@ -1522,13 +1532,19 @@ onMounted(() => {
   }
 
   .main-menu {
-    :deep(.el-menu-item) {
+    :deep(.el-menu-item),
+    :deep(.el-sub-menu__title) {
       padding: 0 12px;
       font-size: 14px;
+      margin-right: 12px;
 
       span {
         display: none;
       }
+    }
+
+    :deep(.el-sub-menu) {
+      margin-right: 12px;
     }
   }
 }

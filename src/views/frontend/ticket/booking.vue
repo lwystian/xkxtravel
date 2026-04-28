@@ -502,6 +502,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTourDetailFull } from '@/api/tour'
+import { createTourOrder } from '@/api/tourOrder'
 
 // =============================================
 // 常量定义
@@ -1136,23 +1137,31 @@ const handleBooking = async () => {
     return
   }
 
+  // 构建订单数据
   const orderData = {
     productId: productInfo.value.code,
     tripPackageId: selectedPackage.value,
     batchPackageId: selectedBatchPackage.value,
     batchDate: selectedBatchDate.value,
     adultCount: adultCount.value,
-    childCount: hasChildPrice.value ? childCount.value : 0
+    childCount: hasChildPrice.value ? childCount.value : 0,
+    // 传递前端计算的价格用于后端校验
+    clientAdultUnitPrice: currentFinalAdultPrice.value,
+    clientChildUnitPrice: hasChildPrice.value ? currentFinalChildPrice.value : 0,
+    clientTotalPrice: totalPrice.value
   }
 
-  // 构建确认信息
-  let hotelInfoStr = ''
+  // 添加酒店信息
   if (selectedHotel.value) {
     orderData.hotelId = selectedHotel.value.accommodationId
     orderData.hotelName = selectedHotel.value.name
     orderData.hotelDays = hotelBookingDays.value
     orderData.hotelPricePerNight = hotelPricePerNight.value
-    orderData.hotelTotalPrice = hotelTotalPrice.value
+  }
+
+  // 构建确认信息
+  let hotelInfoStr = ''
+  if (selectedHotel.value) {
     hotelInfoStr = `酒店住宿：${selectedHotel.value.name}\n` +
       `预订天数：${hotelBookingDays.value}晚 × ¥${hotelPricePerNight.value}/晚\n` +
       `酒店费用：¥${hotelTotalPrice.value}\n`
@@ -1162,7 +1171,7 @@ const handleBooking = async () => {
     await ElMessageBox.confirm(
       `请确认订单信息：\n\n` +
       `行程套餐：${selectedTripPackage.value?.name}\n` +
-      `批次套餐：${selectedBatchPackageData.value?.name}\n` +
+      `批次套餐：${selectedBatchPackageData.value?.name || '标准'}\n` +
       `出发日期：${selectedBatchDate.value}\n` +
       `成人：${adultCount.value}人 × ¥${currentFinalAdultPrice.value}\n` +
       `${hasChildPrice.value ? `儿童：${childCount.value}人 × ¥${currentFinalChildPrice.value}\n` : ''}` +
@@ -1178,11 +1187,29 @@ const handleBooking = async () => {
       }
     )
 
-    // TODO: 调用后端API创建订单
-    ElMessage.success(`预订成功，订单号：BK${Date.now()}`)
+    // 调用后端API创建订单
+    ElMessage.info('正在提交订单...')
+    const res = await createTourOrder(orderData)
+    if (res.code === 200) {
+      const order = res.data
+      ElMessageBox.alert(
+        `预订成功！\n\n订单号：${order.orderNo}\n行程名称：${order.tourName}\n出发日期：${order.departureDate}\n总金额：¥${order.totalAmount}\n\n请联系客服进行付款。`,
+        '订单创建成功',
+        {
+          confirmButtonText: '确定',
+          callback: () => {
+            router.push('/')
+          }
+        }
+      )
+    } else {
+      ElMessage.error(res.message || '订单创建失败')
+    }
 
-  } catch {
-    ElMessage.info('已取消')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('订单创建失败:', error)
+    }
   }
 }
 

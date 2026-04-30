@@ -490,7 +490,17 @@
               </transition>
             </div>
           </div>
-          <button class="submit-btn" @click="handleBooking">立刻报名</button>
+          <button
+  class="submit-btn"
+  :class="{ disabled: !currentBatchCanBook }"
+  :disabled="!currentBatchCanBook"
+  @click="handleBooking"
+>
+  {{ currentBatchCanBook ? '立刻报名' : '暂不可报名' }}
+</button>
+<div v-if="!currentBatchCanBook && cannotBookReason" class="booking-warning">
+  {{ cannotBookReason }}
+</div>
         </div>
       </div>
     </div>
@@ -678,15 +688,17 @@ const batchDatesWithDisplay = computed(() => {
   const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
   const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
   const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+  const requiredCount = adultCount.value + (hasChildPrice.value ? childCount.value : 0)
 
   return batchDates.value.map(batch => {
     const date = new Date(batch.date)
+    const remaining = batch.remaining ?? 0
     return {
       ...batch,
       weekdayName: weekdayNames[date.getDay()],
       finalAdultPrice: tripAdultPrice + (batch.adultDateExtraFee || 0) + batchExtra,
       finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0,
-      canBook: batch.status === '可报名'
+      canBook: batch.status === '可报名' && remaining >= requiredCount
     }
   })
 })
@@ -701,12 +713,14 @@ const getBatchForDate = (dateStr) => {
   const tripAdultPrice = selectedTripPackage.value?.adultPrice || 0
   const tripChildPrice = hasChildPrice.value ? (selectedTripPackage.value?.childPrice ?? tripAdultPrice) : 0
   const batchExtra = selectedBatchPackageData.value?.extraFeePerPerson || 0
+  const requiredCount = adultCount.value + (hasChildPrice.value ? childCount.value : 0)
+  const remaining = batch.remaining ?? 0
 
   return {
     ...batch,
     finalAdultPrice: tripAdultPrice + (batch.adultDateExtraFee || 0) + batchExtra,
     finalChildPrice: hasChildPrice.value ? (tripChildPrice + (batch.childDateExtraFee || 0) + batchExtra) : 0,
-    canBook: batch.status === '可报名'
+    canBook: batch.status === '可报名' && remaining >= requiredCount
   }
 }
 
@@ -753,6 +767,27 @@ const isSelectionComplete = computed(() => {
   return selectedPackageType.value && selectedTrip.value && selectedBatchDate.value && adultCount.value > 0
 })
 
+// 检查当前批次是否可预订（综合考虑状态和余位）
+const currentBatchCanBook = computed(() => {
+  if (!currentBatch.value) return false
+  const statusOk = currentBatch.value.status === '可报名'
+  const remainingOk = (currentBatch.value.remaining ?? 0) >= adultCount.value
+  return statusOk && remainingOk
+})
+
+// 不可预订的原因提示
+const cannotBookReason = computed(() => {
+  if (!currentBatch.value) return ''
+  if (currentBatch.value.status !== '可报名') {
+    return `该批次${currentBatch.value.status}，不可预订`
+  }
+  const remaining = currentBatch.value.remaining ?? 0
+  if (remaining < adultCount.value) {
+    return `余位不足，当前剩余${remaining}个名额，需要${adultCount.value}人`
+  }
+  return ''
+})
+
 // =============================================
 // 方法
 // =============================================
@@ -777,7 +812,13 @@ const nextMonth = () => {
 const toggleDateSelection = (item) => {
   // 检查是否可以预订
   if (item.canBook === false) {
-    ElMessage.warning(`该批次${item.status || item.batch?.status}，不可选择`)
+    const remaining = item.batch?.remaining ?? item.remaining ?? 0
+    const required = adultCount.value + (hasChildPrice.value ? childCount.value : 0)
+    if (remaining < required) {
+      ElMessage.warning(`余位不足，当前剩余${remaining}个名额，需要${required}人`)
+    } else {
+      ElMessage.warning(`该批次${item.status || item.batch?.status}，不可选择`)
+    }
     return
   }
 
@@ -1130,10 +1171,16 @@ const handleBooking = async () => {
     return
   }
 
-  // 检查批次状态
+  // 检查批次状态和余位
   const batch = batchDates.value.find(b => b.date === selectedBatchDate.value)
   if (batch && batch.status !== '可报名') {
     ElMessage.warning(`该批次${batch.status}，不可预订`)
+    return
+  }
+  const remaining = batch?.remaining ?? 0
+  const required = adultCount.value + (hasChildPrice.value ? childCount.value : 0)
+  if (remaining < required) {
+    ElMessage.warning(`余位不足，当前剩余${remaining}个名额，需要${required}人`)
     return
   }
 
@@ -1189,19 +1236,26 @@ const handleBooking = async () => {
 
     // 调用后端API创建订单
     ElMessage.info('正在提交订单...')
-    const order = await createTourOrder(orderData, { showDefaultMsg: false })
+    let order
+    try {
+      order = await createTourOrder(orderData)
+    } catch (err) {
+      // 后端返回的错误信息已经在拦截器中显示了，这里不需要再显示
+      console.error('订单创建失败:', err)
+      return
+    }
     // 询问用户是否立即支付
     await ElMessageBox.confirm(
-        `预订成功！\n\n订单号：${order.orderNo}\n行程名称：${order.tourName}\n出发日期：${order.departureDate}\n总金额：¥${order.totalAmount}\n\n是否立即跳转到支付页面？`,
+        `预订成功！\n\n订单号：${order.orderNo}\n行程名称：${order.tourName}\n出发日期：${order.departureDate}\n总金额：¥${order.totalAmount}\n\n是否立即跳转到填写订单信息页面？`,
         '订单创建成功',
         {
-          confirmButtonText: '立即支付',
+          confirmButtonText: '立即填写',
           cancelButtonText: '稍后支付',
           type: 'success'
         }
       ).then(() => {
-        // 立即支付
-        router.push('/tour-order-pay/' + order.id)
+        // 跳转到订单确认页面
+        router.push('/tour-order-confirm/' + order.id)
       }).catch(() => {
         // 稍后支付，跳转到订单列表
         router.push('/orders')
@@ -1850,6 +1904,31 @@ onMounted(() => {
 
 .submit-btn:hover {
   background: #e55a00;
+}
+
+.submit-btn.disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.submit-btn.disabled:hover {
+  background: #ccc;
+}
+
+.booking-warning {
+  font-size: 12px;
+  color: #ff4d4f;
+  margin-top: 6px;
+  text-align: center;
+  padding: 4px 8px;
+  background: #fff2f0;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.booking-section {
+  flex-wrap: wrap;
 }
 
 .product-header {

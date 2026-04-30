@@ -106,7 +106,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="描述">
+        <el-form-item label="支付描述">
           <el-input v-model="form.description" placeholder="支付方式描述" />
         </el-form-item>
 
@@ -117,6 +117,18 @@
           </el-select>
           <span style="margin-left: 12px; color: #909399; font-size: 12px;">
             {{ getGatewayUrlHint(form.paymentType) }}
+          </span>
+        </el-form-item>
+
+        <el-form-item label="支付超时时间" prop="timeoutExpress">
+          <el-input
+            v-model="form.timeoutExpress"
+            placeholder="如: 30m, 1h, 2h"
+            clearable
+            style="width: 200px"
+          />
+          <span style="margin-left: 12px; color: #909399; font-size: 12px;">
+            订单支付超时时间，默认为 2h
           </span>
         </el-form-item>
 
@@ -232,7 +244,8 @@ const form = reactive({
   appId: '',
   privateKey: '',
   alipayPublicKey: '',
-  isSandbox: true
+  isSandbox: true,
+  timeoutExpress: '2h'
 })
 
 const rules = {
@@ -312,7 +325,8 @@ const handleAdd = () => {
     appId: '',
     privateKey: '',
     alipayPublicKey: '',
-    isSandbox: true
+    isSandbox: true,
+    timeoutExpress: '2h'
   })
 }
 
@@ -334,11 +348,13 @@ const handleEdit = async (row) => {
     form.appId = data.appId || ''
     form.privateKey = data.privateKey || ''
     form.alipayPublicKey = data.alipayPublicKey || ''
+    form.timeoutExpress = data.timeoutExpress || '2h'
   } catch (err) {
     console.error('加载配置详情失败:', err)
     form.appId = ''
     form.privateKey = ''
     form.alipayPublicKey = ''
+    form.timeoutExpress = '2h'
   }
 }
 
@@ -405,7 +421,8 @@ const doSave = async () => {
         appId: form.appId,
         privateKey: form.privateKey,
         alipayPublicKey: form.alipayPublicKey,
-        isSandbox: form.isSandbox
+        isSandbox: form.isSandbox,
+        timeoutExpress: form.timeoutExpress || '2h'
       }, { showDefaultMsg: false })
     }
 

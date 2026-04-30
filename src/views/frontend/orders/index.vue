@@ -170,11 +170,11 @@
                   <el-button
                     v-if="order.status === 0"
                     type="primary"
-                    @click="goToPay(order)"
+                    @click="goToConfirm(order)"
                     class="action-btn pay-btn"
                   >
-                    <el-icon><CreditCard /></el-icon>
-                    去支付
+                    <el-icon><Edit /></el-icon>
+                    填写订单信息
                   </el-button>
                   <el-button
                     v-if="order.status === 0"
@@ -266,6 +266,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUserTourOrders, cancelTourOrder as cancelTourOrderApi } from '@/api/tourOrder'
+import { Edit, Close, View, CreditCard } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -401,6 +402,11 @@ const formatTime = (timeStr) => {
   if (!timeStr) return '-'
   const date = new Date(timeStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
+}
+
+// 跳转到订单确认页面
+const goToConfirm = (order) => {
+  router.push('/tour-order-confirm/' + order.id)
 }
 
 // 跳转到支付页面

@@ -24,3 +24,10 @@ export function getUserTourOrders(params) {
 export function getTourOrderDetail(id) {
   return request.get(`/tour-order/${id}`)
 }
+
+// 更新订单联系人信息
+export function updateOrderContact(id, contactName, contactPhone) {
+  return request.put(`/tour-order/${id}/contact`, null, {
+    params: { contactName, contactPhone }
+  })
+}

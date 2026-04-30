@@ -201,6 +201,12 @@ const frontendRoutes = [
         meta: { title: '支付宝支付', requiresAuth: true }
       },
       {
+        path: 'tour-order-confirm/:id',
+        name: 'TourOrderConfirm',
+        component: () => import('@/views/frontend/payment/tour-order-confirm.vue'),
+        meta: { title: '订单确认', requiresAuth: true }
+      },
+      {
         path: 'tour-order-pay/:id',
         name: 'TourOrderPay',
         component: () => import('@/views/frontend/payment/tour-order-pay.vue'),

@@ -72,4 +72,14 @@ img {
   width: 100%;
 }
 
+/* 表格样式重置：禁用选择列占位 */
+.el-table .el-table__cell:first-child {
+  padding-left: 0 !important;
+}
+
+.el-table .el-table__header-wrapper th:first-child .cell,
+.el-table .el-table__body-wrapper td:first-child .cell {
+  padding-left: 0 !important;
+}
+
 

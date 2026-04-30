@@ -66,8 +66,10 @@ service.interceptors.response.use(
         if (config.successMsg) {
           ElMessage.success(config.successMsg)
         } else if (showDefaultMsg && config.method && config.method.toLowerCase() !== 'get') {
-          // 非 GET 请求默认显示操作成功
-          ElMessage.success('操作成功')
+          // 非 GET 请求默认显示后端返回的消息（如果后端有返回的话）
+          if (res.msg && res.msg !== 'success' && res.msg !== '操作成功') {
+            ElMessage.success(res.msg)
+          }
         }
         
         // 自定义成功回调

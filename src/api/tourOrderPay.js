@@ -3,12 +3,21 @@ import request from '@/utils/request'
 /**
  * 生成支付宝支付表单
  * @param {number} orderId - 订单ID
+ * @param {string} paymentType - 支付类型（默认 alipay）
  * @returns {Promise<string>} 支付表单HTML
  */
-export function generatePayForm(orderId) {
-  return request.get(`/tour-order-pay/pay/${orderId}`, {}, {
+export function generatePayForm(orderId, paymentType = 'alipay') {
+  return request.get(`/tour-order-pay/pay/${orderId}`, { paymentType }, {
     showDefaultMsg: false
   })
+}
+
+/**
+ * 获取可用的支付方式
+ * @returns {Promise<Array>} 支付方式列表
+ */
+export function getAvailablePaymentMethods() {
+  return request.get('/tour-order-pay/methods')
 }
 
 /**

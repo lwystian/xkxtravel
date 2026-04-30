@@ -1,8 +1,8 @@
 import request from '@/utils/request'
 
 // 创建行程订单
-export function createTourOrder(data) {
-  return request.post('/tour-order', data)
+export function createTourOrder(data, config = {}) {
+  return request.post('/tour-order', data, config)
 }
 
 // 支付订单
@@ -11,8 +11,8 @@ export function payTourOrder(id, paymentMethod) {
 }
 
 // 取消订单
-export function cancelTourOrder(id) {
-  return request.put(`/tour-order/${id}/cancel`)
+export function cancelTourOrder(id, config = {}) {
+  return request.put(`/tour-order/${id}/cancel`, null, config)
 }
 
 // 获取用户订单列表

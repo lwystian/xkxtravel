@@ -22,13 +22,10 @@
     <!-- 支付信息确认 -->
     <div v-else-if="order" class="payment-container">
       <div class="payment-header">
-        <div class="alipay-logo">
-          <svg viewBox="0 0 124 36" class="alipay-svg">
-            <path fill="#1677FF" d="M117.6 10.2c0-1.8-1.5-3.3-3.3-3.3-1.8 0-3.3 1.5-3.3 3.3 0 1.5 1 2.7 2.4 3.1l-.6 2.9c-.1.4.2.8.6.8h.6c.3 0 .5-.2.6-.5l.6-2.9c1.2-.4 2-1.5 2-2.9h-.6zm-8.4 0c0-1.8-1.5-3.3-3.3-3.3-1.8 0-3.3 1.5-3.3 3.3 0 1.8 1.5 3.3 3.3 3.3 1.8 0 3.3-1.5 3.3-3.3zm-6.6 0c0-1.8-1.5-3.3-3.3-3.3-1.8 0-3.3 1.5-3.3 3.3 0 1.8 1.5 3.3 3.3 3.3 1.8 0 3.3-1.5 3.3-3.3zm-6.6 0c0-1.8-1.5-3.3-3.3-3.3-1.8 0-3.3 1.5-3.3 3.3 0 1.5 1 2.7 2.4 3.1l-.6 2.9c-.1.4.2.8.6.8h.6c.3 0 .5-.2.6-.5l.6-2.9c1.2-.4 2-1.5 2-2.9h-.6zM74.4 15.4c-4.5 0-8.1 3.6-8.1 8.1s3.6 8.1 8.1 8.1 8.1-3.6 8.1-8.1-3.6-8.1-8.1-8.1zm0 13.2c-2.8 0-5.1-2.3-5.1-5.1s2.3-5.1 5.1-5.1 5.1 2.3 5.1 5.1-2.3 5.1-5.1 5.1z"/>
-            <text x="50" y="24" font-size="18" fill="#333">支付宝支付</text>
-          </svg>
+        <div class="payment-logo">
+          <el-icon :size="40" color="#1677FF"><Wallet /></el-icon>
         </div>
-        <p class="payment-tip">请确认以下支付信息</p>
+        <p class="payment-tip">请选择支付方式并确认支付</p>
       </div>
 
       <!-- 订单信息 -->
@@ -72,23 +69,56 @@
         </div>
       </div>
 
+      <!-- 支付方式选择 -->
+      <div class="payment-methods-section">
+        <div class="section-title">
+          <span>选择支付方式</span>
+        </div>
+
+        <div class="payment-methods-grid">
+          <div
+            v-for="method in availableMethods"
+            :key="method.id"
+            class="payment-method-card"
+            :class="{ active: selectedMethod === method.paymentType, disabled: !method.configured }"
+            @click="selectMethod(method)"
+          >
+            <el-icon :size="32" :color="getPaymentColor(method.paymentType)">
+              <component :is="getPaymentIcon(method.paymentType)" />
+            </el-icon>
+            <span class="method-name">{{ method.paymentName }}</span>
+            <span class="method-badge" v-if="method.isSandbox">沙箱</span>
+            <el-icon v-if="!method.configured" class="unconfigured-icon" color="#909399"><Lock /></el-icon>
+            <div v-if="selectedMethod === method.paymentType" class="selected-check">
+              <el-icon color="#fff"><Check /></el-icon>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="availableMethods.length === 0" class="no-methods">
+          <el-empty description="暂无可用的支付方式，请联系管理员配置" />
+        </div>
+      </div>
+
       <!-- 支付金额 -->
       <div class="amount-section">
         <span class="amount-label">应付金额</span>
         <span class="amount-value">¥ {{ formatPrice(order.totalAmount) }}</span>
       </div>
 
-      <!-- 支付方式提示 -->
-      <div class="payment-method-tip">
-        <el-icon><InfoFilled /></el-icon>
-        <span>点击下方按钮将跳转到支付宝完成支付</span>
-      </div>
-
       <!-- 按钮区域 -->
       <div class="button-section">
         <el-button @click="cancelPayment" :disabled="paying">取消支付</el-button>
-        <el-button type="primary" @click="goToAlipay" :loading="paying" size="large">
-          <span v-if="!paying">打开支付宝支付</span>
+        <el-button
+          type="primary"
+          @click="handlePay"
+          :loading="paying"
+          :disabled="!selectedMethod || !selectedMethodConfig.configured"
+          size="large"
+        >
+          <span v-if="!paying">
+            {{ selectedMethod ? `使用${selectedMethodConfig.paymentName}支付` : '请选择支付方式' }}
+          </span>
           <span v-else>正在跳转...</span>
         </el-button>
       </div>
@@ -102,7 +132,7 @@
           show-icon
         >
           <template #default>
-            <p>如果无法跳转到支付宝，可点击下方按钮进行模拟支付测试</p>
+            <p>如果无法跳转到支付页面，可点击下方按钮进行模拟支付测试</p>
             <el-button type="warning" size="small" @click="handleMockPay" :loading="paying" plain>
               模拟支付（调试用）
             </el-button>
@@ -113,10 +143,9 @@
 
     <!-- 隐藏的支付表单 -->
     <form
-      ref="alipayFormRef"
-      name="alipaysubmit"
+      ref="payFormRef"
+      name="paysubmit"
       method="post"
-      action="https://openapi-sandbox.dl.alipaydev.com/gateway.do"
       style="display: none;"
     >
       <input type="hidden" name="biz_content" />
@@ -127,12 +156,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { InfoFilled } from '@element-plus/icons-vue'
+import { Wallet, Check, Lock, Aliwangwang, Wechat } from '@element-plus/icons-vue'
 import { getTourOrderDetail } from '@/api/tourOrder'
-import { generatePayForm, mockPay as mockPayApi, getOrderByOrderNo } from '@/api/tourOrderPay'
+import { generatePayForm as generatePayFormApi, mockPay as mockPayApi, getOrderByOrderNo, getAvailablePaymentMethods } from '@/api/tourOrderPay'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,17 +171,49 @@ const loading = ref(true)
 const paying = ref(false)
 const order = ref(null)
 const error = ref(null)
-const alipayFormRef = ref(null)
+const payFormRef = ref(null)
+const availableMethods = ref([])
+const selectedMethod = ref('alipay')
 
-// 判断是否为测试模式（沙箱环境）
-const isTestMode = computed(() => {
-  return true // 始终显示测试按钮，方便调试
-})
-
-// 是否显示调试提示（通过URL参数控制）
+// 是否显示调试提示
 const showDebugTip = computed(() => {
   return route.query.debug === 'true'
 })
+
+// 选中的支付方式配置
+const selectedMethodConfig = computed(() => {
+  return availableMethods.value.find(m => m.paymentType === selectedMethod.value) || {
+    paymentName: '未知',
+    configured: false
+  }
+})
+
+// 获取支付方式图标
+const getPaymentIcon = (type) => {
+  const icons = {
+    alipay: Aliwangwang,
+    wechat: Wechat
+  }
+  return icons[type] || Wallet
+}
+
+// 获取支付方式颜色
+const getPaymentColor = (type) => {
+  const colors = {
+    alipay: '#1677FF',
+    wechat: '#07C160'
+  }
+  return colors[type] || '#666'
+}
+
+// 选择支付方式
+const selectMethod = (method) => {
+  if (!method.configured) {
+    ElMessage.warning(`${method.paymentName} 未配置，请选择其他支付方式`)
+    return
+  }
+  selectedMethod.value = method.paymentType
+}
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -164,6 +225,25 @@ const formatDate = (dateStr) => {
 const formatPrice = (price) => {
   if (!price) return '0.00'
   return Number(price).toFixed(2)
+}
+
+// 加载可用的支付方式
+const loadAvailableMethods = async () => {
+  try {
+    const res = await getAvailablePaymentMethods()
+    // 响应拦截器已返回 res.data，直接使用
+    availableMethods.value = Array.isArray(res) ? res : (res.data || [])
+
+    // 默认选择第一个已配置的支付方式
+    const configuredMethod = availableMethods.value.find(m => m.configured)
+    if (configuredMethod) {
+      selectedMethod.value = configuredMethod.paymentType
+    } else if (availableMethods.value.length > 0) {
+      selectedMethod.value = availableMethods.value[0].paymentType
+    }
+  } catch (err) {
+    console.error('加载支付方式失败:', err)
+  }
 }
 
 // 获取订单信息
@@ -204,10 +284,15 @@ const fetchOrderInfo = async () => {
   }
 }
 
-// 跳转支付宝支付
-const goToAlipay = async () => {
+// 处理支付
+const handlePay = async () => {
   if (!order.value) {
     ElMessage.error('订单信息不存在')
+    return
+  }
+
+  if (!selectedMethod.value) {
+    ElMessage.error('请选择支付方式')
     return
   }
 
@@ -216,7 +301,7 @@ const goToAlipay = async () => {
     ElMessage.info('正在准备支付...')
 
     // 调用后端生成支付表单
-    const formHtml = await generatePayForm(order.value.id)
+    const formHtml = await generatePayFormApi(order.value.id, selectedMethod.value)
 
     // 创建临时容器
     const container = document.createElement('div')
@@ -227,7 +312,6 @@ const goToAlipay = async () => {
     // 获取表单并自动提交
     const form = container.querySelector('form')
     if (form) {
-      // 添加 Target="_blank" 打开新窗口
       form.target = '_blank'
       form.method = 'post'
       form.acceptCharset = 'UTF-8'
@@ -267,7 +351,7 @@ const handleMockPay = async () => {
     )
 
     paying.value = true
-    await mockPayApi(order.value.id)
+    await mockPayApi(order.value.id, { showDefaultMsg: false })
 
     ElMessage.success('模拟支付成功')
     router.replace(`/payment/result?out_trade_no=${order.value.orderNo}&status=success`)
@@ -300,8 +384,11 @@ const goToOrders = () => {
   router.push('/orders')
 }
 
-onMounted(() => {
-  fetchOrderInfo()
+onMounted(async () => {
+  await Promise.all([
+    fetchOrderInfo(),
+    loadAvailableMethods()
+  ])
 })
 </script>
 
@@ -351,7 +438,7 @@ onMounted(() => {
 }
 
 .payment-container {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
   background: white;
   border-radius: 16px;
@@ -366,20 +453,11 @@ onMounted(() => {
   text-align: center;
 }
 
-.alipay-logo {
+.payment-logo {
   margin-bottom: 15px;
 }
 
-.alipay-svg {
-  height: 40px;
-  width: auto;
-}
-
-.payment-header .alipay-svg text {
-  fill: white;
-}
-
-.payment-tip {
+.payment-header .payment-tip {
   font-size: 14px;
   opacity: 0.9;
   margin: 0;
@@ -431,6 +509,93 @@ onMounted(() => {
   max-width: 60%;
 }
 
+.payment-methods-section {
+  padding: 20px 30px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.payment-method-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 15px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+
+.payment-method-card:hover:not(.disabled) {
+  border-color: #409EFF;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+}
+
+.payment-method-card.active {
+  border-color: #1677FF;
+  background: linear-gradient(135deg, rgba(22, 119, 255, 0.05) 0%, rgba(9, 88, 217, 0.08) 100%);
+}
+
+.payment-method-card.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.method-name {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.method-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: #ff9800;
+  color: white;
+  border-radius: 4px;
+}
+
+.unconfigured-icon {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+.selected-check {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 24px;
+  height: 24px;
+  background: #1677FF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-methods {
+  padding: 20px;
+}
+
 .amount-section {
   display: flex;
   justify-content: space-between;
@@ -451,17 +616,6 @@ onMounted(() => {
   color: #ff4d4f;
 }
 
-.payment-method-tip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 15px;
-  background: #f0f9ff;
-  color: #1677ff;
-  font-size: 14px;
-}
-
 .button-section {
   display: flex;
   gap: 15px;
@@ -479,8 +633,14 @@ onMounted(() => {
   border: none;
 }
 
-.button-section .el-button--primary:hover {
+.button-section .el-button--primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #409eff 0%, #1677ff 100%);
+}
+
+.button-section .el-button:disabled {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
 }
 
 .debug-mode-tip {

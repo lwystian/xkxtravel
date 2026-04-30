@@ -74,6 +74,11 @@
           <span>轮播图管理</span>
         </el-menu-item>
 
+        <el-menu-item index="/back/payment" v-if="userStore.isAdmin">
+          <el-icon><Wallet /></el-icon>
+          <span>支付配置</span>
+        </el-menu-item>
+
       </el-menu>
     </div>
   </div>
@@ -97,7 +102,8 @@ import {
   List,
   House,
   Picture,
-  PriceTag
+  PriceTag,
+  Wallet
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

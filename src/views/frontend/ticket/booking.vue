@@ -1189,9 +1189,7 @@ const handleBooking = async () => {
 
     // 调用后端API创建订单
     ElMessage.info('正在提交订单...')
-    const res = await createTourOrder(orderData)
-    // 响应拦截器已处理成功/失败提示，这里直接使用返回的订单数据
-    const order = res
+    const order = await createTourOrder(orderData, { showDefaultMsg: false })
     // 询问用户是否立即支付
     await ElMessageBox.confirm(
         `预订成功！\n\n订单号：${order.orderNo}\n行程名称：${order.tourName}\n出发日期：${order.departureDate}\n总金额：¥${order.totalAmount}\n\n是否立即跳转到支付页面？`,

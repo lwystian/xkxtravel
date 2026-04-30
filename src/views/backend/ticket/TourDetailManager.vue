@@ -686,6 +686,8 @@ const fetchTourDetail = async () => {
       videoEnabled.value = res.video?.enabled === 1
       videoUrl.value = res.video?.url || ''
       videoPoster.value = res.video?.poster || ''
+      // 初始化完成后允许自动保存
+      isVideoInitialized = true
       // 出团通知
       notice.value = res.tour?.notice || ''
       // 产品信息
@@ -769,7 +771,7 @@ const handleVideoUpload = async (options) => {
     const url = await request.upload('/file/upload/img', formData, { showDefaultMsg: false })
     if (url) {
       videoUrl.value = url
-      ElMessage.success('视频上传成功')
+      saveVideo(true, '视频已保存')
       onSuccess()
     } else {
       ElMessage.error('上传失败')
@@ -802,7 +804,7 @@ const handlePosterUpload = async (options) => {
     const poster = await request.upload('/file/upload/img', formData, { showDefaultMsg: false })
     if (poster) {
       videoPoster.value = poster
-      ElMessage.success('封面上传成功')
+      saveVideo(true, '封面已保存')
       onSuccess()
     } else {
       ElMessage.error('上传失败')
@@ -1044,36 +1046,41 @@ const saveImages = async () => {
 }
 
 // 保存视频
-const saveVideo = async () => {
+const saveVideo = async (showMsg = false, msg = '视频已保存') => {
   try {
     await updateTourVideo(props.tourId, {
       videoUrl: videoUrl.value,
       videoPoster: videoPoster.value,
       videoEnabled: videoEnabled.value ? 1 : 0
     })
-    ElMessage.success('视频保存成功')
+    if (showMsg) {
+      ElMessage.success(msg)
+    }
   } catch (error) {
     console.error('保存视频失败:', error)
   }
 }
 
+// 标记是否初始化完成
+let isVideoInitialized = false
+
+// tourId 变化时重置初始化标志
+watch(() => props.tourId, () => {
+  isVideoInitialized = false
+})
+
 // 启用视频开关变化时自动保存
 const handleVideoEnabledChange = () => {
-  saveVideo()
+  if (!isVideoInitialized) return
+  saveVideo(true, videoEnabled.value ? '视频已启用' : '视频已关闭')
 }
-
-// 监听视频相关数据变化，自动保存
-watch([videoUrl, videoPoster], () => {
-  if (props.tourId && videoUrl.value) {
-    saveVideo()
-  }
-})
 
 // 删除视频后自动保存
 const handleRemoveVideo = () => {
+  if (!isVideoInitialized) return
   videoUrl.value = ''
   videoPoster.value = ''
-  saveVideo()
+  saveVideo(false)
 }
 
 // ==================== 酒店预订管理 ====================

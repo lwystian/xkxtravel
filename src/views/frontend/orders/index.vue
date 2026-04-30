@@ -417,7 +417,7 @@ const cancelOrder = async (orderId) => {
   }).then(async () => {
     loading.value = true
     try {
-      await cancelTourOrderApi(orderId)
+      await cancelTourOrderApi(orderId, { showDefaultMsg: false })
       ElMessage.success('订单已取消')
       fetchOrders()
       fetchOrderStats()

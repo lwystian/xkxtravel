@@ -86,6 +86,12 @@ export const backendRoutes = [
         name: 'TagManagement',
         component: () => import('@/views/backend/tag/TagList.vue'),
         meta: { title: '标签管理', icon: 'PriceTag' }
+      },
+      {
+        path: 'payment',
+        name: 'PaymentManagement',
+        component: () => import('@/views/backend/payment/PaymentConfig.vue'),
+        meta: { title: '支付配置', icon: 'Wallet' }
       }
     ]
   }

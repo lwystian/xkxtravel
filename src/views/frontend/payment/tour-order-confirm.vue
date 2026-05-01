@@ -26,7 +26,7 @@
         </el-steps>
       </div>
 
-      <div class="content-wrapper" ref="contentWrapper">
+      <div class="content-wrapper">
         <!-- 左侧：表单区域 -->
         <div class="form-section">
           <!-- 产品信息 -->
@@ -261,7 +261,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, reactive, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -282,14 +282,9 @@ const currentStep = ref(0)
 const contactFormRef = ref(null)
 const travelerFormRef = ref(null)
 const summarySection = ref(null)
-const contentWrapper = ref(null)
 const isSummaryFixed = ref(false)
-
-// 存储结算栏的原始位置信息
-let summaryOriginalRect = null
-let summaryParentRect = null
-let scrollListener = null
-let resizeObserver = null
+let summaryTop = 0
+let summaryWidth = 320
 
 // 联系人表单
 const contactForm = reactive({
@@ -660,148 +655,6 @@ const loadOrderInfo = async () => {
   }
 }
 
-// 更新结算栏位置信息
-const updateSummaryPositionInfo = () => {
-  if (!summarySection.value) return
-  
-  // 获取结算栏相对于视口的位置
-  const rect = summarySection.value.getBoundingClientRect()
-  // 获取父容器相对于视口的位置
-  const parentRect = summarySection.value.parentElement.getBoundingClientRect()
-  
-  summaryOriginalRect = {
-    top: rect.top,
-    left: rect.left,
-    width: rect.width,
-    height: rect.height
-  }
-  
-  summaryParentRect = {
-    top: parentRect.top,
-    left: parentRect.left,
-    width: parentRect.width
-  }
-}
-
-// 处理滚动固定效果
-const handleScroll = () => {
-  if (!summarySection.value || !summaryOriginalRect) return
-  
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  // 固定阈值：当结算栏顶部滚动到距离浏览器顶部20px时开始固定
-  const fixedThreshold = 20
-  
-  // 计算结算栏原本距离文档顶部的距离
-  const originalOffsetTop = summaryOriginalRect.top + scrollTop
-  
-  // 判断是否需要固定：当前滚动位置 + 阈值 > 原始顶部位置
-  const shouldFix = scrollTop + fixedThreshold > originalOffsetTop
-  
-  if (shouldFix && !isSummaryFixed.value) {
-    // 开始固定
-    isSummaryFixed.value = true
-    
-    // 保存原始样式
-    const summaryEl = summarySection.value
-    summaryEl.dataset.originalWidth = summaryEl.offsetWidth
-    summaryEl.dataset.originalLeft = summaryOriginalRect.left
-    
-    // 设置固定样式
-    summaryEl.style.position = 'fixed'
-    summaryEl.style.top = fixedThreshold + 'px'
-    summaryEl.style.left = summaryOriginalRect.left + 'px'
-    summaryEl.style.width = summaryOriginalRect.width + 'px'
-    summaryEl.style.zIndex = '1000'
-    
-    // 创建占位符
-    createPlaceholder()
-  } else if (!shouldFix && isSummaryFixed.value) {
-    // 取消固定
-    isSummaryFixed.value = false
-    
-    const summaryEl = summarySection.value
-    summaryEl.style.position = ''
-    summaryEl.style.top = ''
-    summaryEl.style.left = ''
-    summaryEl.style.width = ''
-    summaryEl.style.zIndex = ''
-    
-    // 移除占位符
-    removePlaceholder()
-  }
-}
-
-// 创建占位符
-let placeholderEl = null
-const createPlaceholder = () => {
-  if (!placeholderEl && summarySection.value && summarySection.value.parentNode) {
-    placeholderEl = document.createElement('div')
-    placeholderEl.className = 'summary-placeholder'
-    placeholderEl.style.width = summaryOriginalRect.width + 'px'
-    placeholderEl.style.height = summaryOriginalRect.height + 'px'
-    placeholderEl.style.flexShrink = '0'
-    summarySection.value.parentNode.insertBefore(placeholderEl, summarySection.value)
-  }
-}
-
-// 移除占位符
-const removePlaceholder = () => {
-  if (placeholderEl && placeholderEl.parentNode) {
-    placeholderEl.parentNode.removeChild(placeholderEl)
-    placeholderEl = null
-  }
-}
-
-// 窗口大小改变时重新计算位置
-const handleResize = () => {
-  if (isSummaryFixed.value) {
-    // 如果当前是固定状态，先取消固定，重新计算后再决定是否固定
-    isSummaryFixed.value = false
-    if (summarySection.value) {
-      summarySection.value.style.position = ''
-      summarySection.value.style.top = ''
-      summarySection.value.style.left = ''
-      summarySection.value.style.width = ''
-    }
-    removePlaceholder()
-  }
-  
-  // 重新计算位置信息
-  nextTick(() => {
-    updateSummaryPositionInfo()
-    handleScroll()
-  })
-}
-
-// 初始化滚动监听
-const initScrollListener = () => {
-  updateSummaryPositionInfo()
-  window.addEventListener('scroll', handleScroll)
-  window.addEventListener('resize', handleResize)
-  
-  // 使用 ResizeObserver 监听内容变化
-  if (window.ResizeObserver && contentWrapper.value) {
-    resizeObserver = new ResizeObserver(() => {
-      handleResize()
-    })
-    resizeObserver.observe(contentWrapper.value)
-  }
-}
-
-// 清理滚动监听
-const cleanupScrollListener = () => {
-  if (scrollListener) {
-    window.removeEventListener('scroll', handleScroll)
-    scrollListener = null
-  }
-  window.removeEventListener('resize', handleResize)
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-    resizeObserver = null
-  }
-  removePlaceholder()
-}
-
 // 去支付
 const handlePay = async () => {
   // 验证联系人表单
@@ -890,15 +743,82 @@ const goBack = () => {
 onMounted(async () => {
   await loadOrderInfo()
   await loadFrequentTravelers()
-  
-  // 等待 DOM 渲染完成后初始化
-  await nextTick()
-  initScrollListener()
+
+  // 等待 DOM 渲染完成后获取结算栏位置并添加滚动监听
+  setTimeout(() => {
+    updateSummaryPosition()
+    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('resize', updateSummaryPosition)
+  }, 100)
 })
 
 onUnmounted(() => {
-  cleanupScrollListener()
+  window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('resize', updateSummaryPosition)
 })
+
+// 获取结算栏的初始位置
+const updateSummaryPosition = () => {
+  if (summarySection.value) {
+    const rect = summarySection.value.getBoundingClientRect()
+    summaryTop = rect.top + window.scrollY
+    // 获取初始的 left 和 width 位置
+    const leftPos = rect.left
+    const width = rect.width
+    summarySection.value.style.left = leftPos + 'px'
+    // 存储宽度
+    summaryWidth = width
+  }
+}
+
+// 处理滚动事件
+const handleScroll = () => {
+  const scrollTop = window.scrollY
+  const headerHeight = 160 // 页面头部高度（顶部信息栏 + Logo搜索栏 + 导航菜单）
+
+  if (scrollTop + headerHeight >= summaryTop) {
+    if (!isSummaryFixed.value) {
+      isSummaryFixed.value = true
+      // 创建占位元素
+      createPlaceholder()
+      // 固定时设置位置
+      if (summarySection.value) {
+        summarySection.value.style.width = summaryWidth + 'px'
+      }
+    }
+  } else {
+    if (isSummaryFixed.value) {
+      isSummaryFixed.value = false
+      // 移除占位元素
+      removePlaceholder()
+      // 恢复样式
+      if (summarySection.value) {
+        summarySection.value.style.left = ''
+        summarySection.value.style.width = ''
+      }
+    }
+  }
+}
+
+// 创建占位元素
+let placeholderEl = null
+const createPlaceholder = () => {
+  if (!placeholderEl && summarySection.value) {
+    placeholderEl = document.createElement('div')
+    placeholderEl.className = 'summary-placeholder'
+    placeholderEl.style.width = '320px'
+    placeholderEl.style.flexShrink = '0'
+    summarySection.value.parentNode.insertBefore(placeholderEl, summarySection.value)
+  }
+}
+
+// 移除占位元素
+const removePlaceholder = () => {
+  if (placeholderEl) {
+    placeholderEl.parentNode.removeChild(placeholderEl)
+    placeholderEl = null
+  }
+}
 </script>
 
 <style scoped>
@@ -962,17 +882,13 @@ onUnmounted(() => {
 .summary-section {
   width: 320px;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: opacity 0.3s ease;
 }
 
 .summary-section.is-fixed {
-  position: fixed !important;
-  z-index: 1000;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.summary-placeholder {
-  flex-shrink: 0;
+  position: fixed;
+  top: 160px;
+  z-index: 100;
 }
 
 @media (max-width: 1200px) {
@@ -1260,15 +1176,7 @@ onUnmounted(() => {
 
   .summary-section {
     width: 100%;
-    position: static !important;
-  }
-  
-  .summary-section.is-fixed {
-    position: static !important;
-  }
-  
-  .summary-placeholder {
-    display: none;
+    position: static;
   }
 
   .traveler-detail {
